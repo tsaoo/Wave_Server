@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <math.h>
+#include <stdarg.h>
 
 #define uchar unsigned char
 #define ARTCODE unsigned int
@@ -65,6 +66,7 @@
 #define ROOT "/server/poem/"
 #define DB_ROOT "/server/poem/db/"
 #define CONFIG_ROOT "/server/poem/config/"
+#define LOG_PATH "/server/poem/log/"
 #define USERLIST_PATH "/server/poem/config/userlist"
 
 struct User
@@ -134,3 +136,5 @@ extern int readdic(struct Artini*, char,int);
 extern int adddic(struct Artini);
 extern int updatedic(struct Artini,struct Artini);
 extern void inttostr(char*,int);
+extern void writelog(char*,...);
+extern void throwex(char*,...);

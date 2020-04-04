@@ -85,6 +85,7 @@ void anacmd(char clnt_num,char* buffer){
 		adduser(&newuser);
 		sendcmd(clnt_num,REGSUCS,WAIT);
 		printf("client[%d] registed name:%s pw:%s\n",clnt_num,newuser.name,newuser.pw);
+		writelog("client[%d] registed name:%s pw:%s\n",clnt_num,newuser.name,newuser.pw);
 	}
 
 	else if(buffer[0] == LOGIN){
@@ -92,8 +93,11 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(user.name,buffer+1,256);
 		memcpy(user.pw,buffer+257,256);
 		printf("client[%d] username:%s pw:%s\n",clnt_num,user.name,user.pw);
+		writelog("LOGIN client[%d] trys to log with username:%s pw:%s",clnt_num,user.name,user.pw);
+		
 		if(strcmp(locuser(user.name).name,"unknown") == 0){
 			sendcmd(clnt_num,USFAIL,WAIT);
+			writelog("USFAIL client[%d] submitted unknown username:%s",clnt_num,user.name);
 			return;
 		}
 		struct User cmpuser = locuser(user.name);
@@ -103,8 +107,12 @@ void anacmd(char clnt_num,char* buffer){
 			char userid[4];
 			memcpy(userid,&user.id,4);
 			senddat(clnt_num,LOGSUCS,userid,STOP,WAIT);
-		}else
+			writelog("LOGSUCS client[%d] username:%s pw:%s",clnt_num,user.name,user.pw);
+
+		}else{
 			sendcmd(clnt_num,PWFAIL,WAIT);
+			writelog("PWFAIL client[%d] submitted wrong pw:%s",user.pw);
+		}
 	}
 
 	else if(buffer[0] == GTLST){
@@ -114,7 +122,8 @@ void anacmd(char clnt_num,char* buffer){
 		struct Artini* ini = (struct Artini*)malloc(sizeof(struct Artini));
 		memset(ini,0,sizeof(struct Artini));
 		int last = 0;
-		printf("client[%d](%s) getting list of block %d\n",clnt_num,clnt_users[clnt_num].name,buffer[1]);
+		printf("client[%d](%s) is requiring list of block %d\n",clnt_num,clnt_users[clnt_num].name,buffer[1]);
+		writelog("GTLST client[%d](%s) requires list of block %d",clnt_num,clnt_users[clnt_num].name,buffer[1]);
 		//此次读取后剩余的artini数目>=0且只读取size次
 		for(offset;(last=readdic(ini,buffer[1],offset))>=0&&size>0;offset++){
 			size --;
@@ -155,7 +164,8 @@ void anacmd(char clnt_num,char* buffer){
 		BLOCKCODE bcode = 0;
 		memcpy(&code,buffer+1,4);
 		memcpy(&bcode,buffer+5,1);
-		printf("client[%d](%s) getting artdat %d\n",clnt_num,clnt_users[clnt_num].name,code);
+		printf("client[%d](%s) is requiring artdat %d\n",clnt_num,clnt_users[clnt_num].name,code);
+		writelog("GTART client[%d](%s) requires artdat %d",clnt_num,clnt_users[clnt_num].name,code);
 		struct Artini ini = locart(code,bcode);
 		//如果返回的Artini.code为零，则判断请求的code不存在
 		if(ini.code == 0){
@@ -187,7 +197,8 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(&ini.repcount,buffer+783,2);
 		memcpy(&ini.uploaderID,buffer+785,4);
 		ini.code = getartcode(ini.bcode);
-		printf("client[%d](%s) uploading %s(%d) size:%d to block %d\n",clnt_num,clnt_users[clnt_num].name,ini.title,ini.code,ini.length,ini.bcode);
+		printf("client[%d](%s) is uploading %s(%d) size:%d to block %d\n",clnt_num,clnt_users[clnt_num].name,ini.title,ini.code,ini.length,ini.bcode);
+		writelog("ARTINI client[%d](%s) start uploading %s(%d) size:%d to block %d",clnt_num,clnt_users[clnt_num].name,ini.title,ini.code,ini.length,ini.bcode);		
 		//获取文章正文
 		uchar *dat = (char*)malloc(sizeof(char)*ini.length);
 		uchar *buf = (char*)malloc(sizeof(char)*PAKLEN-1);
@@ -210,6 +221,7 @@ void anacmd(char clnt_num,char* buffer){
 			int res = createart(ini,dat,offset,1000);
 				if(res==-1){
 				sendcmd(clnt_num,DATFAIL,WAIT);
+				writelog("DATFAIL client[%d](%s) failed to upload",clnt_num,clnt_users[clnt_num].name);
 				free(dat);
 				free(buf);
 				return;
@@ -237,6 +249,8 @@ void anacmd(char clnt_num,char* buffer){
 		cmt.makerid = clnt_users[clnt_num].id;
 
 		printf("client[%d](%s) replied %d maker:%s id:%d\n",clnt_num,clnt_users[clnt_num].name,acode,cmt.maker,cmt.makerid);
+		writelog("COMTUP client[%d](%s) replied %d maker:%s id:%d",clnt_num,clnt_users[clnt_num].name,acode,cmt.maker,cmt.makerid);
+
 		if(addcomment(acode,bcode,cmt) == 1)
 			sendcmd(clnt_num,DATSUCS,WAIT);
 		else
@@ -262,11 +276,11 @@ void anacmd(char clnt_num,char* buffer){
 			memcpy(dat+256,cmtlist[i].comment,765);
 			if(i<count-1){
 				senddat(clnt_num,COMTDL,dat,KEEP,WAIT);
-				printf("send COMTDL KEEP\n");
+				//printf("send COMTDL KEEP\n");
 			}
 			else{
 				senddat(clnt_num,COMTDL,dat,STOP,WAIT);
-				printf("send COMTDL STOP\n");
+				//printf("send COMTDL STOP\n");
 			}
 		}
 		free(cmtlist);
@@ -278,10 +292,14 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(&acode,buffer+1,4);
 		memcpy(&bcode,buffer+5,1);
 		printf("client[%d](%s) deleting %d\n",clnt_num,clnt_users[clnt_num].name,acode);
+		writelog("DLART client[%d](%s) deleting %d",clnt_num,clnt_users[clnt_num].name,acode);
+
 		if(deleteart(acode,bcode) == 1)
 			sendcmd(clnt_num,DATSUCS,WAIT);
-		else
+		else{
 			sendcmd(clnt_num,DATFAIL,WAIT);
+			writelog("DATFAIL client[%d](%s) failed to delete %d",clnt_num,clnt_users[clnt_num].name,acode);
+		}
 	}
 }
 
@@ -751,4 +769,55 @@ void inttostr(char* s,int l){
 	for(int i=0;i<10;i++)
 		s[i] = (l%(int)pow(10,10-i))/(int)pow(10,9-i) + 48;
 	s[11]=0;
+}
+
+//=======================日志系统=======================
+void writelog(char* format,...){
+	strcpy(format+strlen(format),"\n");
+	time_t t = time(0);
+	char ts[32];
+	strftime(ts,sizeof(time),"%Y-%m-%d",localtime(&t));
+
+	char logpath[MAX_PATH_LEN];
+	memset(logpath,0,MAX_PATH_LEN);
+	strcpy(logpath,LOG_PATH);
+	strcpy(logpath+strlen(logpath),ts);
+
+	FILE* logfile = fopen(logpath,"ab+");
+	fseek(logfile,0,SEEK_END);
+	memset(ts,0,sizeof(ts));
+	strftime(ts,sizeof(ts),"%H:%M:%S\t\t",localtime(&t));
+	fputs(ts,logfile);
+
+	char info[1024];
+	memset(info,0,1024);
+	va_list list;
+	va_start(list,format);
+	vsprintf(info,format,list);
+	va_end(list);
+	fputs(info,logfile);
+	fclose(logfile);
+}
+
+void throwex(char *format,...){
+	time_t t = time(0);
+	char ts[32];
+	strftime(ts,sizeof(time),"%Y-%m-%d-%H:%M:%S",localtime(&t));
+
+	char logpath[MAX_PATH_LEN];
+	memset(logpath,0,MAX_PATH_LEN);
+	strcpy(logpath,LOG_PATH);
+	strcpy(logpath+strlen(logpath),ts);
+
+	FILE* logfile = fopen(logpath,"ab+");
+	fseek(logfile,0,SEEK_END);
+
+	char info[1024];
+	memset(info,0,1024);
+	va_list list;
+	va_start(list,format);
+	vsprintf(info,format,list);
+	va_end(list);
+	fputs(info,logfile);
+	fclose(logfile);
 }
