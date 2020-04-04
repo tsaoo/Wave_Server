@@ -63,11 +63,11 @@
 #define MAX_PASSWORD_LEN 256
 #define PAKLEN	1024
 #define MAX_TITLE_LEN 256
-#define ROOT "/server/poem/"
-#define DB_ROOT "/server/poem/db/"
-#define CONFIG_ROOT "/server/poem/config/"
-#define LOG_PATH "/server/poem/log/"
-#define USERLIST_PATH "/server/poem/config/userlist"
+#define ROOT "/server/"
+#define DB_ROOT "/server/db/"
+#define CONFIG_ROOT "/server/config/"
+#define LOG_PATH "/server/config/log/"
+#define USERLIST_PATH "/server/config/userlist"
 
 struct User
 {
@@ -111,8 +111,8 @@ socklen_t clnt_addr_sizes[MAXCLNT];			//用户地址大小组
 int* clnt_writing[MAXCLNT];				//用户正在修改的文章
 
 char dic_stats[2] = {READY,READY};
-char* DB_PATH[2] = {"/server/poem/db/0/","/server/poem/db/1/"};
-char* DIC_PATH[2] = {"/server/poem/db/_0dic","/server/poem/db/_1dic"};
+char* DB_PATH[2] = {"/server/db/0/","/server/db/1/"};
+char* DIC_PATH[2] = {"/server/db/_0dic","/server/db/_1dic"};
 
 extern void clnt_func();
 extern void anacmd(char,char*);

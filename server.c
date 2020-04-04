@@ -773,10 +773,13 @@ void inttostr(char* s,int l){
 
 //=======================日志系统=======================
 void writelog(char* format,...){
-	strcpy(format+strlen(format),"\n");
+	char ifmt[strlen(format)+1];
+	memset(ifmt,0,sizeof(ifmt));
+	strcpy(ifmt,format);
+	strcpy(ifmt+strlen(format),"\n");
 	time_t t = time(0);
 	char ts[32];
-	strftime(ts,sizeof(time),"%Y-%m-%d",localtime(&t));
+	strftime(ts,sizeof(ts),"%Y-%m-%d",localtime(&t));
 
 	char logpath[MAX_PATH_LEN];
 	memset(logpath,0,MAX_PATH_LEN);
@@ -786,14 +789,14 @@ void writelog(char* format,...){
 	FILE* logfile = fopen(logpath,"ab+");
 	fseek(logfile,0,SEEK_END);
 	memset(ts,0,sizeof(ts));
-	strftime(ts,sizeof(ts),"%H:%M:%S\t\t",localtime(&t));
+	strftime(ts,sizeof(ts),"%H:%M:%S\t",localtime(&t));
 	fputs(ts,logfile);
 
 	char info[1024];
 	memset(info,0,1024);
 	va_list list;
-	va_start(list,format);
-	vsprintf(info,format,list);
+	va_start(list,ifmt);
+	vsprintf(info,ifmt,list);
 	va_end(list);
 	fputs(info,logfile);
 	fclose(logfile);
@@ -802,7 +805,7 @@ void writelog(char* format,...){
 void throwex(char *format,...){
 	time_t t = time(0);
 	char ts[32];
-	strftime(ts,sizeof(time),"%Y-%m-%d-%H:%M:%S",localtime(&t));
+	strftime(ts,sizeof(ts),"%Y-%m-%d-%H:%M:%S",localtime(&t));
 
 	char logpath[MAX_PATH_LEN];
 	memset(logpath,0,MAX_PATH_LEN);
