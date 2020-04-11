@@ -121,6 +121,7 @@ extern int sendcmd(int,uchar,char);
 extern int recvdat(int,uchar*);
 extern int adduser(struct User *);
 extern struct User locuser(const char*);
+extern struct User locuser_byid(int);
 extern int checkuserid(struct User*,int,int);
 extern int randuserid();
 extern int createart(struct Artini,char*,int,size_t);

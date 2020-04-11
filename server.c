@@ -6,8 +6,6 @@ int main(int argc,char* argv[]){
 		return 0;
 	}
 
-	setlocale(LC_ALL,"");
-
 	struct sockaddr_in serv_addr;
 	int serv_sock = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
 	memset(&serv_addr,0,sizeof(serv_addr));
@@ -135,7 +133,7 @@ void anacmd(char clnt_num,char* buffer){
 			memcpy(dat+5,&ini->time,4);
 			memcpy(dat+9,&ini->title,256);
 			memcpy(dat+265,&ini->author,256);
-			memcpy(dat+521,&ini->uploader,256);
+			//memcpy(dat+521,&ini->uploader,256);
 			memcpy(dat+777,&ini->length,4);
 			memcpy(dat+781,&ini->type,1);
 			memcpy(dat+782,&ini->repcount,2);
@@ -245,11 +243,10 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(&bcode,buffer+5,1);
 		memcpy(&cmt.comment,buffer+6,765);
 		cmt.time = time(NULL);
-		strcpy(cmt.maker,clnt_users[clnt_num].name);
 		cmt.makerid = clnt_users[clnt_num].id;
 
-		printf("client[%d](%s) replied %d maker:%s id:%d\n",clnt_num,clnt_users[clnt_num].name,acode,cmt.maker,cmt.makerid);
-		writelog("COMTUP client[%d](%s) replied %d maker:%s id:%d",clnt_num,clnt_users[clnt_num].name,acode,cmt.maker,cmt.makerid);
+		printf("client[%d](%s) replied %d makerid:%d\n",clnt_num,clnt_users[clnt_num].name,acode,cmt.makerid);
+		writelog("COMTUP client[%d](%s) replied %d makerid:%d",clnt_num,clnt_users[clnt_num].name,acode,cmt.makerid);
 
 		if(addcomment(acode,bcode,cmt) == 1)
 			sendcmd(clnt_num,DATSUCS,WAIT);
@@ -434,6 +431,29 @@ struct User locuser(const char* username){
 	return erruser;
 }
 
+struct User locuser_byid(int id){
+//寻找该用户（代码复用）
+	FILE* userlist = fopen(USERLIST_PATH,"rb+");
+	fseek(userlist,0,SEEK_END);
+	int usercount = ftell(userlist)/sizeof(struct User);
+	rewind(userlist);
+	struct User* users = (struct User*)malloc(usercount*sizeof(struct User));
+	struct User res;
+	memset(users,0,sizeof(struct User)*usercount);
+	fread(users,sizeof(struct User),usercount,userlist);
+	fclose(userlist);
+	for(int i=0;i<usercount;i++){
+		if(users[i].id == id){
+			res = users[i];
+			free(users);
+			return res;
+		}
+	}
+	free(users);
+	struct User erruser={"unknown","unkonwn",0};
+	return erruser;
+}
+
 //======================文章管理========================
 //创建新文章，返回实际写入的字节数
 int createart(struct Artini ini,char* dat,int offset,size_t size){
@@ -584,6 +604,9 @@ struct Cmtdat* readcmt(ARTCODE acode,BLOCKCODE bcode,int* countout){
 
 	struct Cmtdat* list = (struct Cmtdat*)malloc(sizeof(struct Cmtdat)*count);
 	*countout = fread(list,sizeof(struct Cmtdat),count,file);
+	//根据每条评论的评论者ID获取评论者名
+	for(int i=0;i<count;++i)
+		strcpy(list[i].maker, locuser_byid(list[i].makerid).name);
 	fclose(file);
 	return list;
 }
@@ -661,8 +684,11 @@ struct Artini locart(ARTCODE code,BLOCKCODE bcode){
 	fread(list,sizeof(struct Artini),count,dic);
 	fclose(dic);
 	for(int i=0;i<count;++i){
-		if(list[i].code == code)
+		if(list[i].code == code){
+			//根据uploaderID获取uploader
+			strcpy(list[i].uploader, locuser_byid(list[i].uploaderID).name);
 			return list[i];
+		}
 	}
 	struct Artini null = {0,0,0,0,0,0};
 	return null;
