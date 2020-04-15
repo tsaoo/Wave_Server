@@ -85,6 +85,7 @@ void anacmd(char clnt_num,char* buffer){
 		}
 
 		struct User newuser;
+		memset(&newuser,0,sizeof(struct User));
 		strcpy(newuser.name,buffer+1);
 		if(strcmp(locuser(newuser.name).name,"erruser") == 0){
 			sendcmd(clnt_num,USFAIL,WAIT);
