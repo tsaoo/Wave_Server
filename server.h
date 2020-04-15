@@ -43,6 +43,7 @@
 #define GTSTAT  111
 #define STAT 	112
 #define SETSTAT	113
+#define REQFO	114
 
 //C1状态字	
 #define PWFAIL	200
@@ -62,7 +63,7 @@
 #define STOP	0xFF
 
 //参数控制
-#define MAXCLNT 10
+#define MAXCLNT 50
 #define MAX_PATH_LEN 256
 #define MAX_USERNAME_LEN 256
 #define MAX_PASSWORD_LEN 256

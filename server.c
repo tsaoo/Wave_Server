@@ -73,8 +73,10 @@ void clnt_func(){
 }
 
 void anacmd(char clnt_num,char* buffer){
-	if(buffer[0] == WFCM)
+	if(buffer[0] == WFCM){
 		clnt_stats[clnt_num] = READY;
+		return;
+	}
 
 	else if(buffer[0] == REG){
 		if(p_reg == 0){
@@ -93,6 +95,7 @@ void anacmd(char clnt_num,char* buffer){
 		sendcmd(clnt_num,REGSUCS,WAIT);
 		printf("client[%d] registed name:%s pw:%s\n",clnt_num,newuser.name,newuser.pw);
 		writelog("client[%d] registed name:%s pw:%s\n",clnt_num,newuser.name,newuser.pw);
+		return;
 	}
 
 	else if(buffer[0] == LOGIN){
@@ -125,6 +128,7 @@ void anacmd(char clnt_num,char* buffer){
 			sendcmd(clnt_num,PWFAIL,WAIT);
 			writelog("PWFAIL client[%d] submitted wrong pw:%s",user.pw);
 		}
+		return;
 	}
 
 	else if(buffer[0] == GTLST){
@@ -174,6 +178,7 @@ void anacmd(char clnt_num,char* buffer){
 		if(last == -1)
 			sendcmd(clnt_num,BNULL,WAIT);
 		free(ini);
+		return;
 	}
 
 	else if(buffer[0] == GTART){	
@@ -199,6 +204,7 @@ void anacmd(char clnt_num,char* buffer){
 		}
 		senddat(clnt_num,ARTDAT,dat,STOP,WAIT);
 		free(dat);
+		return;
 	}
 
 	else if(buffer[0] == ARTINI){
@@ -255,6 +261,7 @@ void anacmd(char clnt_num,char* buffer){
 		sendcmd(clnt_num,DATSUCS,WAIT);
 		free(dat);
 		free(buf);
+		return;
 	}
 
 	else if(buffer[0] == COMTUP){
@@ -280,6 +287,7 @@ void anacmd(char clnt_num,char* buffer){
 			sendcmd(clnt_num,DATSUCS,WAIT);
 		else
 			sendcmd(clnt_num,DATFAIL,WAIT);
+		return;
 	}
 
 	else if(buffer[0] == GTCMT){
@@ -313,6 +321,7 @@ void anacmd(char clnt_num,char* buffer){
 			}
 		}
 		free(cmtlist);
+		return;
 	}
 
 	else if(buffer[0] == DLART){
@@ -329,6 +338,7 @@ void anacmd(char clnt_num,char* buffer){
 			sendcmd(clnt_num,DATFAIL,WAIT);
 			writelog("DATFAIL client[%d](%s) failed to delete %d",clnt_num,clnt_users[clnt_num].name,acode);
 		}
+		return;
 	}
 
 	else if(buffer[0] == GTSTAT){
@@ -342,22 +352,23 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(conf+11,&p_refresh,1);
 		memcpy(conf+12,&p_log,1);
 		memcpy(conf+13,&p_fo,1);
-		int checksum = maxclnt+conclnt+p_reg+p_up+p_comt+p_refresh+p_log+p_fo;
+		int checksum = maxclnt+p_reg+p_up+p_comt+p_refresh+p_log+p_fo;
 		memcpy(conf+14,&checksum,4);
 		senddat(clnt_num,STAT,conf,STOP,WAIT);
+		return;
 	}
 
 	else if(buffer[0] == SETSTAT){
 		struct Servconf* conf = (struct Servconf*)malloc(sizeof(struct Servconf));
-		memcpy(conf,buffer+1,14);
-		/*
-		memcpy(&maxclnt,buffer+1,4);
-		memcpy(&p_reg,buffer+9,1);
-		memcpy(&p_up,buffer+10,1);
-		memcpy(&p_comt,buffer+11,1);
-		memcpy(&p_refresh,buffer+12,1);
-		memcpy(&p_log,buffer+13,1);
-		memcpy(&p_fo,buffer+14,1);*/
+		//memcpy(conf,buffer+1,14);
+		memcpy(&conf->maxc,buffer+1,4);
+		memcpy(&conf->reg,buffer+9,1);
+		memcpy(&conf->up,buffer+10,1);
+		memcpy(&conf->comt,buffer+11,1);
+		memcpy(&conf->refresh,buffer+12,1);
+		memcpy(&conf->log,buffer+13,1);
+		memcpy(&conf->fo,buffer+14,1);
+		memcpy(&conf->checksum,buffer+15,4);
 		int checksum = conf->maxc+conf->reg+conf->up+conf->comt+conf->refresh+conf->log+conf->fo;
 		if(checksum != conf->checksum){
 			sendcmd(clnt_num,DATFAIL,WAIT);
@@ -380,7 +391,16 @@ void anacmd(char clnt_num,char* buffer){
 		return;
 	}
 
-	//sendcmd(clnt_num,REJ,WAIT);
+	else if(buffer[0] == REQFO){
+		if(p_fo == 1)
+			sendcmd(clnt_num,DATSUCS,WAIT);
+		else
+			sendcmd(clnt_num,REJ,WAIT);
+		writelog("REQFO client[%d](%s) ask permission to FO",clnt_num,clnt_users[clnt_num].name);
+		return;
+	}
+
+	sendcmd(clnt_num,REJ,WAIT);
 }
 
 //===========================连接控制=======================
@@ -692,7 +712,7 @@ struct Cmtdat* readcmt(ARTCODE acode,BLOCKCODE bcode,int offset,int size,int* co
 	for(int i=0;i+offset<count&&i<size;++i){
 		strcpy(list[i+offset].maker, locuser_byid(list[i+offset].makerid).name);
 		memcpy(&res[i],&list[i+offset],sizeof(struct Cmtdat));
-		*countout ++;
+		*countout += 1;
 	}
 	fclose(file);
 	free(list);
