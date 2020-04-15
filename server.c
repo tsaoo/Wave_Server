@@ -285,10 +285,14 @@ void anacmd(char clnt_num,char* buffer){
 	else if(buffer[0] == GTCMT){
 		ARTCODE acode = 0;
 		BLOCKCODE bcode = 0;
+		int offset = 0;
+		int size = 0;
 		memcpy(&acode,buffer+1,4);
 		memcpy(&bcode,buffer+5,1);
+		memcpy(&offset,buffer+6,4);
+		memcpy(&size,buffer+10,4);
 		int count = 0;
-		struct Cmtdat* cmtlist = readcmt(acode,bcode,&count);
+		struct Cmtdat* cmtlist = readcmt(acode,bcode,offset,size,&count);
 		if(count <= 0){
 			sendcmd(clnt_num,BNULL,WAIT);
 			return;
@@ -665,7 +669,7 @@ int deleteart(ARTCODE acode,BLOCKCODE bcode){
 }
 
 //读取评论，返回评论数目
-struct Cmtdat* readcmt(ARTCODE acode,BLOCKCODE bcode,int* countout){
+struct Cmtdat* readcmt(ARTCODE acode,BLOCKCODE bcode,int offset,int size,int* countout){
 	char path[MAX_PATH_LEN];
 	memset(path,0,MAX_PATH_LEN);
 	char acodestr[11];
@@ -684,7 +688,7 @@ struct Cmtdat* readcmt(ARTCODE acode,BLOCKCODE bcode,int* countout){
 	struct Cmtdat* list = (struct Cmtdat*)malloc(sizeof(struct Cmtdat)*count);
 	*countout = fread(list,sizeof(struct Cmtdat),count,file);
 	//根据每条评论的评论者ID获取评论者名
-	for(int i=0;i<count;++i)
+	for(int i=offset;i<count&&(i-offset)<size;++i)
 		strcpy(list[i].maker, locuser_byid(list[i].makerid).name);
 	fclose(file);
 	return list;

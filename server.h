@@ -152,7 +152,7 @@ extern int checkuserid(struct User*,int,int);
 extern int randuserid();
 extern int createart(struct Artini,char*,int,size_t);
 extern int addcomment(ARTCODE,BLOCKCODE,struct Cmtdat);
-extern struct Cmtdat* readcmt(ARTCODE,BLOCKCODE,int*);
+extern struct Cmtdat* readcmt(ARTCODE,BLOCKCODE,int,int,int*);
 extern int readart(struct Artini,char*,int,size_t);
 extern int deleteart(ARTCODE,BLOCKCODE);
 extern struct Artini locart(ARTCODE,BLOCKCODE);
