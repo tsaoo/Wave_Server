@@ -380,7 +380,7 @@ void anacmd(char clnt_num,char* buffer){
 		return;
 	}
 
-	sendcmd(clnt_num,REJ,WAIT);
+	//sendcmd(clnt_num,REJ,WAIT);
 }
 
 //===========================连接控制=======================
@@ -686,12 +686,17 @@ struct Cmtdat* readcmt(ARTCODE acode,BLOCKCODE bcode,int offset,int size,int* co
 	rewind(file);
 
 	struct Cmtdat* list = (struct Cmtdat*)malloc(sizeof(struct Cmtdat)*count);
-	*countout = fread(list,sizeof(struct Cmtdat),count,file);
+	struct Cmtdat* res = (struct Cmtdat*)malloc(sizeof(struct Cmtdat)*size);
+	fread(list,sizeof(struct Cmtdat),count,file);
 	//根据每条评论的评论者ID获取评论者名
-	for(int i=offset;i<count&&(i-offset)<size;++i)
-		strcpy(list[i].maker, locuser_byid(list[i].makerid).name);
+	for(int i=0;i+offset<count&&i<size;++i){
+		strcpy(list[i+offset].maker, locuser_byid(list[i+offset].makerid).name);
+		memcpy(&res[i],&list[i+offset],sizeof(struct Cmtdat));
+		*countout ++;
+	}
 	fclose(file);
-	return list;
+	free(list);
+	return res;
 }
 
 //读取artini目录，其返回值为本次读取后的剩余条目数
