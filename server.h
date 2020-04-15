@@ -40,6 +40,9 @@
 #define COMTUP	108
 #define COMTDL	109
 #define GTCMT	110
+#define GTSTAT  111
+#define STAT 	112
+#define SETSTAT	113
 
 //C1状态字	
 #define PWFAIL	200
@@ -50,6 +53,8 @@
 #define BADCODE	205
 #define DATSUCS	206
 #define DATFAIL 207
+#define REJ		208
+#define ALIVE	222
 
 //C2控制字
 #define KEEP	0xDD
@@ -100,6 +105,17 @@ struct Artini
 	int empty2;
 };
 
+struct Servconf{
+	int maxc;
+	char reg;
+	char up;
+	char comt;
+	char refresh;
+	char log;
+	char fo;
+	int checksum;
+};
+
 
 pthread_t clnt_thread[MAXCLNT];				//用户线程组
 struct User clnt_users[MAXCLNT];			//连接对应账户组
@@ -109,6 +125,16 @@ int clnt_stats[MAXCLNT];					//用户套接字状态
 struct sockaddr_in clnt_addrs[MAXCLNT];		//用户地址组
 socklen_t clnt_addr_sizes[MAXCLNT];			//用户地址大小组
 int* clnt_writing[MAXCLNT];				//用户正在修改的文章
+
+//全局设置
+int conclnt = 0;			//当前连接数int
+int maxclnt = MAXCLNT;		//最大连接数
+char p_reg = 1;				//允许注册
+char p_log = 1;				//允许登陆
+char p_up = 1;				//允许上传
+char p_refresh = 1;			//允许刷新
+char p_fo = 1;				//允许飞花令
+char p_comt = 1;			//允许评论
 
 char dic_stats[2] = {READY,READY};
 char* DB_PATH[2] = {"/server/db/0/","/server/db/1/"};

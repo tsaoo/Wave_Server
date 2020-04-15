@@ -15,9 +15,9 @@ int main(int argc,char* argv[]){
 	serv_addr.sin_port = htons(1080);
 	bind(serv_sock,(struct sockaddr*)&serv_addr,sizeof(serv_addr));
 
-	listen(serv_sock,MAXCLNT);		//启动监听，队列最长为MAXCLNT
+	listen(serv_sock,maxclnt);		//启动监听，队列最长为MAXCLNT
 
-	for(int i=0;i<MAXCLNT;++i){		//初始化
+	for(int i=0;i<maxclnt;++i){		//初始化
 		memset(&clnt_addrs[i],0,sizeof(clnt_addrs[i]));
 		clnt_stats[i] = BUSY;
 		clnt_addr_sizes[i] = sizeof(clnt_addrs[i]);
@@ -27,7 +27,7 @@ int main(int argc,char* argv[]){
 
 	while(1){ 
 		int avanum = -1;		//可用的用户编号
-		for(int i=0;i<MAXCLNT;++i)
+		for(int i=0;i<maxclnt;++i)
 			if(clnt_socks[i]==-1){
 				avanum = i;
 				break;
@@ -39,6 +39,9 @@ int main(int argc,char* argv[]){
 				&clnt_addr_sizes[avanum]);
 			
 			printf("clinet connected, avanum:%d\n",avanum);
+			writelog("CONNECT clntnum:%d",avanum);
+			conclnt ++;
+
 			clnt_npthinfo = avanum;
 
 			pthread_create(&clnt_thread[avanum],
@@ -65,6 +68,7 @@ void clnt_func(){
 		memset(buffer,0,PAKLEN-1);
 	}
 	printf("client[%d] disconnected\n",clnt_num);
+	conclnt --;
 	return;
 }
 
@@ -73,6 +77,11 @@ void anacmd(char clnt_num,char* buffer){
 		clnt_stats[clnt_num] = READY;
 
 	else if(buffer[0] == REG){
+		if(p_reg == 0){
+			sendcmd(clnt_num,REJ,WAIT);
+			return;
+		}
+
 		struct User newuser;
 		strcpy(newuser.name,buffer+1);
 		if(strcmp(locuser(newuser.name).name,"erruser") == 0){
@@ -87,6 +96,11 @@ void anacmd(char clnt_num,char* buffer){
 	}
 
 	else if(buffer[0] == LOGIN){
+		if(p_log == 0){
+			sendcmd(clnt_num,REJ,WAIT);
+			return;
+		}
+
 		struct User user;
 		memcpy(user.name,buffer+1,256);
 		memcpy(user.pw,buffer+257,256);
@@ -114,6 +128,11 @@ void anacmd(char clnt_num,char* buffer){
 	}
 
 	else if(buffer[0] == GTLST){
+		if(p_refresh == 0){
+			sendcmd(clnt_num,REJ,WAIT);
+			return;
+		}
+
 		int offset = 0, size = 0;
 		memcpy(&offset,buffer+2,4);
 		memcpy(&size,buffer+6,4);
@@ -133,7 +152,7 @@ void anacmd(char clnt_num,char* buffer){
 			memcpy(dat+5,&ini->time,4);
 			memcpy(dat+9,&ini->title,256);
 			memcpy(dat+265,&ini->author,256);
-			//memcpy(dat+521,&ini->uploader,256);
+			memcpy(dat+521,&ini->uploader,256);
 			memcpy(dat+777,&ini->length,4);
 			memcpy(dat+781,&ini->type,1);
 			memcpy(dat+782,&ini->repcount,2);
@@ -183,13 +202,17 @@ void anacmd(char clnt_num,char* buffer){
 	}
 
 	else if(buffer[0] == ARTINI){
+		if(p_up == 0){
+			sendcmd(clnt_num,REJ,WAIT);
+			return;
+		}
 		//解析上传的Artini
 		struct Artini ini;
 		memcpy(&ini.bcode,buffer+5,1);
 		memcpy(&ini.time,buffer+6,4);
 		memcpy(&ini.title,buffer+10,256);
 		memcpy(&ini.author,buffer+266,256);
-		memcpy(&ini.uploader,buffer+522,256);
+		//memcpy(&ini.uploader,buffer+522,256);
 		memcpy(&ini.length,buffer+778,4);
 		memcpy(&ini.type,buffer+782,1);
 		memcpy(&ini.repcount,buffer+783,2);
@@ -235,6 +258,11 @@ void anacmd(char clnt_num,char* buffer){
 	}
 
 	else if(buffer[0] == COMTUP){
+		if(p_comt == 0){
+			sendcmd(clnt_num,REJ,WAIT);
+			return;
+		}
+
 		ARTCODE acode = 0;
 		BLOCKCODE bcode = 0;
 		struct Cmtdat cmt;
@@ -298,6 +326,57 @@ void anacmd(char clnt_num,char* buffer){
 			writelog("DATFAIL client[%d](%s) failed to delete %d",clnt_num,clnt_users[clnt_num].name,acode);
 		}
 	}
+
+	else if(buffer[0] == GTSTAT){
+		char conf[1021];
+		memset(conf,0,1021);
+		memcpy(conf,&maxclnt,4);
+		memcpy(conf+4,&conclnt,4);
+		memcpy(conf+8,&p_reg,1);
+		memcpy(conf+9,&p_up,1);
+		memcpy(conf+10,&p_comt,1);
+		memcpy(conf+11,&p_refresh,1);
+		memcpy(conf+12,&p_log,1);
+		memcpy(conf+13,&p_fo,1);
+		int checksum = maxclnt+conclnt+p_reg+p_up+p_comt+p_refresh+p_log+p_fo;
+		memcpy(conf+14,&checksum,4);
+		senddat(clnt_num,STAT,conf,STOP,WAIT);
+	}
+
+	else if(buffer[0] == SETSTAT){
+		struct Servconf* conf = (struct Servconf*)malloc(sizeof(struct Servconf));
+		memcpy(conf,buffer+1,14);
+		/*
+		memcpy(&maxclnt,buffer+1,4);
+		memcpy(&p_reg,buffer+9,1);
+		memcpy(&p_up,buffer+10,1);
+		memcpy(&p_comt,buffer+11,1);
+		memcpy(&p_refresh,buffer+12,1);
+		memcpy(&p_log,buffer+13,1);
+		memcpy(&p_fo,buffer+14,1);*/
+		int checksum = conf->maxc+conf->reg+conf->up+conf->comt+conf->refresh+conf->log+conf->fo;
+		if(checksum != conf->checksum){
+			sendcmd(clnt_num,DATFAIL,WAIT);
+			return;
+		}
+		printf("client[%d](%s) set server config\n\tmaxclient=%d p_reg=%d p_up=%d p_comt=%d p_refresh=%d p_log=%d p_fo=%d\n",
+			clnt_num,clnt_users[clnt_num].name,conf->maxc,conf->reg,conf->up,conf->comt,conf->refresh,conf->log,conf->fo);
+		writelog("SETSTAT client[%d](%s) set server config\n\tmaxclient=%d p_reg=%d p_up=%d p_comt=%d p_refresh=%d p_log=%d p_fo=%d",
+			clnt_num,clnt_users[clnt_num].name,conf->maxc,conf->reg,conf->up,conf->comt,conf->refresh,conf->log,conf->fo);
+
+		maxclnt = conf->maxc;
+		p_reg = conf->reg;
+		p_up = conf->up;
+		p_comt = conf->comt;
+		p_refresh = conf->refresh;
+		p_log = conf->log;
+		p_fo = conf->fo;
+
+		sendcmd(clnt_num,DATSUCS,WAIT);
+		return;
+	}
+
+	sendcmd(clnt_num,REJ,WAIT);
 }
 
 //===========================连接控制=======================
@@ -628,6 +707,9 @@ int readdic(struct Artini* ini, BLOCKCODE bcode,int offset){
 	}
 	else{
 		fclose(dic);
+		for(int i=0;i<count;++i){
+			strcpy(ini[i].uploader,locuser_byid(ini[i].uploaderID).name);
+		}
 		//返回剩余的artini条目数
 		return count-offset-1;
 	}
