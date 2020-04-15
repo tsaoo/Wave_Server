@@ -91,7 +91,7 @@ void anacmd(char clnt_num,char* buffer){
 			sendcmd(clnt_num,USFAIL,WAIT);
 			return;
 		}
-		memcpy(newuser.pw,buffer+257,MAX_PASSWORD_LEN);
+		strcpy(newuser.pw,buffer+257);
 		adduser(&newuser);
 		sendcmd(clnt_num,REGSUCS,WAIT);
 		printf("client[%d] registed name:%s pw:%s\n",clnt_num,newuser.name,newuser.pw);
@@ -722,6 +722,7 @@ struct Cmtdat* readcmt(ARTCODE acode,BLOCKCODE bcode,int offset,int size,int* co
 
 //读取artini目录，其返回值为本次读取后的剩余条目数
 int readdic(struct Artini* ini, BLOCKCODE bcode,int offset){
+	memset(ini,0,sizeof(struct Artini));
 	FILE* dic = fopen(DIC_PATH[bcode],"rb+");
 	fseek(dic,0,SEEK_END);
 	int count = ftell(dic)/sizeof(struct Artini);
@@ -738,7 +739,7 @@ int readdic(struct Artini* ini, BLOCKCODE bcode,int offset){
 	else{
 		fclose(dic);
 		for(int i=0;i<count;++i){
-			strcpy(ini[i].uploader,locuser_byid(ini[i].uploaderID).name);
+			memcpy(ini[i].uploader,locuser_byid(ini[i].uploaderID).name,256);
 		}
 		//返回剩余的artini条目数
 		return count-offset-1;
