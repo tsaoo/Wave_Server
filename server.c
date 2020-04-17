@@ -401,6 +401,10 @@ void anacmd(char clnt_num,char* buffer){
 		return;
 	}
 
+	else if(buffer[0] == ALIVE){
+		return;
+	}
+
 	sendcmd(clnt_num,REJ,WAIT);
 }
 
