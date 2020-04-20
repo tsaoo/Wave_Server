@@ -407,7 +407,19 @@ void anacmd(char clnt_num,char* buffer){
 
 	//undone
 	else if(buffer[0] == REQDV){
-		sendcmd(clnt_num,REJ,WAIT);
+		int index = 0;
+		memcpy(&index,buffer+1,4);
+		struct DailyVerse* dv = (struct DailyVerse*)(malloc(sizeof(struct DailyVerse)));
+		memset(dv,0,sizeof(struct DailyVerse));
+		if(readdv(index,dv) <= 0){
+			sendcmd(clnt_num,REJ,WAIT);
+			return;
+		}
+
+		char dat[1021];
+		memcpy(dat,dv,sizeof(struct DailyVerse));
+		senddat(clnt_num,DV,dat,STOP,WAIT);
+		free(dv);
 		return;
 	}
 
@@ -918,6 +930,14 @@ void inttostr(char* s,int l){
 	for(int i=0;i<10;i++)
 		s[i] = (l%(int)pow(10,10-i))/(int)pow(10,9-i) + 48;
 	s[11]=0;
+}
+
+int readdv(int index,struct DailyVerse* dv){
+	FILE* d_file = fopen(DV_PATH,"rb+");
+	fseek(d_file,(index-1)*sizeof(struct DailyVerse),SEEK_SET);
+	int res = fread(dv,sizeof(struct DailyVerse),1,d_file);
+	fclose(d_file);
+	return res;
 }
 
 //=======================日志系统=======================

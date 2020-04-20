@@ -76,6 +76,7 @@
 #define CONFIG_ROOT "/server/config/"
 #define LOG_PATH "/server/config/log/"
 #define USERLIST_PATH "/server/config/userlist"
+#define DV_PATH "/server/db/dv"
 
 struct User
 {
@@ -119,6 +120,11 @@ struct Servconf{
 	int checksum;
 };
 
+struct DailyVerse{
+	char content[821];
+	char author[100];
+	char source[100];
+};
 
 pthread_t clnt_thread[MAXCLNT];				//用户线程组
 struct User clnt_users[MAXCLNT];			//连接对应账户组
@@ -165,6 +171,7 @@ extern int checkartcode(struct Artini*,int,ARTCODE,BLOCKCODE);
 extern int readdic(struct Artini*, char,int);
 extern int adddic(struct Artini);
 extern int updatedic(struct Artini,struct Artini);
+extern int readdv(int,struct DailyVerse*);
 extern void inttostr(char*,int);
 extern void writelog(char*,...);
 extern void throwex(char*,...);
