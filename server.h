@@ -44,6 +44,8 @@
 #define STAT 	112
 #define SETSTAT	113
 #define REQFO	114
+#define REQDV	115
+#define DV	116
 
 //C1状态字	
 #define PWFAIL	200

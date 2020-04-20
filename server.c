@@ -12,7 +12,7 @@ int main(int argc,char* argv[]){
 
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
-	serv_addr.sin_port = htons(1080);
+	serv_addr.sin_port = htons(26535);
 	bind(serv_sock,(struct sockaddr*)&serv_addr,sizeof(serv_addr));
 
 	listen(serv_sock,maxclnt);		//启动监听，队列最长为MAXCLNT
@@ -405,7 +405,13 @@ void anacmd(char clnt_num,char* buffer){
 		return;
 	}
 
-	sendcmd(clnt_num,REJ,WAIT);
+	//undone
+	else if(buffer[0] == REQDV){
+		sendcmd(clnt_num,REJ,WAIT);
+		return;
+	}
+
+	//sendcmd(clnt_num,REJ,WAIT);
 }
 
 //===========================连接控制=======================
