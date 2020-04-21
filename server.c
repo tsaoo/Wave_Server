@@ -422,7 +422,27 @@ void anacmd(char clnt_num,char* buffer){
 		free(dv);
 		return;
 	}
-
+	
+	else if(buffer[0] == MVART){
+		ARTCODE acode = 0;
+		BLOCKCODE bcode = 0;
+		memcpy(&acode,buffer+1,sizeof(ARTCODE));
+		memcpy(&bcode,buffer+1+sizeof(ARTCODE),sizeof(BLOCKCODE));
+		
+		struct Artini oini = locart(acode,bcode);
+		if(oini.code == 0){
+			sendcmd(clnt_num,DATFAIL,WAIT);
+			return;
+		}
+		
+		struct Artini nini = oini;
+		if(updatedic(oini,nini) != 1){
+			sendcmd(clnt_num,DATFAIL,WAIT);
+			return;
+		}
+		sendcmd(clnt_num,DATSUCS,WAIT);
+		return;
+	}
 	//sendcmd(clnt_num,REJ,WAIT);
 }
 
