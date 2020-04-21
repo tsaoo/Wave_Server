@@ -46,6 +46,8 @@
 #define REQFO	114
 #define REQDV	115
 #define DV	116
+#define DLCMT	117
+#define MVART	118
 
 //C1状态字	
 #define PWFAIL	200
