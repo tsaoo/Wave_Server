@@ -48,6 +48,7 @@
 #define DV	116
 #define DLCMT	117
 #define MVART	118
+#define ADLKE 	119
 
 //C1状态字	
 #define PWFAIL	200
@@ -77,7 +78,8 @@
 #define DB_ROOT "/server/db/"
 #define CONFIG_ROOT "/server/config/"
 #define LOG_PATH "/server/config/log/"
-#define USERLIST_PATH "/server/config/userlist"
+#define USER_PATH "/server/config/usr/"
+#define USERLIST_PATH "/server/config/usr/userlist"
 #define DV_PATH "/server/db/dv"
 #define DV_ANN_PATH "/server/db/dv_ann"
 
@@ -179,6 +181,7 @@ extern int checkartcode(struct Artini*,int,ARTCODE,BLOCKCODE);
 extern int readdic(struct Artini*, char,int);
 extern int adddic(struct Artini);
 extern int updatedic(struct Artini,struct Artini);
+extern int addlike(ARTCODE,BLOCKCODE,unsigned int);
 extern int readdv(int,struct DailyVerse*);
 extern int readdv_ann(struct DailyVerse*);
 extern void inttostr(char*,int);

@@ -92,7 +92,7 @@ void anacmd(char clnt_num,char* buffer){
 			sendcmd(clnt_num,USFAIL,WAIT);
 			return;
 		}
-		strcpy(newuser.pw,buffer+257);
+		strcpy(newuser.pw,buffer+101);
 		adduser(&newuser);
 		sendcmd(clnt_num,REGSUCS,WAIT);
 		printf("client[%d] registed name:%s pw:%s\n",clnt_num,newuser.name,newuser.pw);
@@ -107,8 +107,8 @@ void anacmd(char clnt_num,char* buffer){
 		}
 
 		struct User user;
-		memcpy(user.name,buffer+1,256);
-		memcpy(user.pw,buffer+257,256);
+		memcpy(user.name,buffer+1,100);
+		memcpy(user.pw,buffer+101,100);
 		printf("client[%d] username:%s pw:%s\n",clnt_num,user.name,user.pw);
 		writelog("LOGIN client[%d] trys to log with username:%s pw:%s",clnt_num,user.name,user.pw);
 		
@@ -255,6 +255,7 @@ void anacmd(char clnt_num,char* buffer){
 		}
 		//解析上传的Artini
 		struct Artini ini;
+		memset(&ini,0,sizeof(struct Artini));
 		memcpy(&ini.bcode,buffer+5,1);
 		memcpy(&ini.time,buffer+6,4);
 		memcpy(&ini.title,buffer+10,100);
@@ -508,6 +509,19 @@ void anacmd(char clnt_num,char* buffer){
 		sendcmd(clnt_num,DATSUCS,WAIT);
 		return;
 	}
+
+	else (buffer[0] == ADLKE){
+		ARTCODE acode = 0;
+		BLOCKCODE bcode = 0;
+		memcpy(&acode,buffer+1,4);
+		memcpy(&bcode,buffer+5,1);
+
+		if(addlike(acode,bcode,users[clnt_num].id) <= 0)
+			sendcmd(clnt_num,DATFAIL,WAIT);
+		else
+			sendcmd(clnt_num,DATSUCS,WAIT);
+		return;
+	}
 	//sendcmd(clnt_num,REJ,WAIT);
 }
 
@@ -672,13 +686,15 @@ int createart(struct Artini ini,char* dat,int offset,size_t size){
 	memset(codestr,0,11);
 	inttostr(codestr,ini.code);
 
-	char fpath[MAX_PATH_LEN],cmtpath[MAX_PATH_LEN];
+	char fpath[MAX_PATH_LEN],cmtpath[MAX_PATH_LEN],likepath[MAX_PATH_LEN];
 	strcpy(fpath,DB_PATH[ini.bcode]);
 	strcpy(fpath+strlen(fpath),codestr);
 	mkdir(fpath,0700);
 	strcpy(cmtpath,fpath);
+	strcpy(likepath,fpath);
 	strcpy(fpath+strlen(fpath),"/main");
 	strcpy(cmtpath+strlen(cmtpath),"/comment");
+	strcpy(likepath+strlen(likepath),"/like");
 
 	FILE* artfile;
 	if((artfile=fopen(fpath,"ab+"))==NULL)
@@ -687,6 +703,10 @@ int createart(struct Artini ini,char* dat,int offset,size_t size){
 	fclose(artfile);
 
 	if((artfile=fopen(cmtpath,"ab+"))==NULL)
+		return -1;
+	fclose(artfile);
+
+	if((artfile=fopen(likepath,"ab+"))==NULL)
 		return -1;
 	fclose(artfile);
 
@@ -849,9 +869,7 @@ int readdic(struct Artini* ini, BLOCKCODE bcode,int offset){
 	}
 	else{
 		fclose(dic);
-		for(int i=0;i<count;++i){
-			memcpy(ini[i].uploader,locuser_byid(ini[i].uploaderID).name,256);
-		}
+		memcpy(&ini->uploader,locuser_byid(ini->uploaderID).name,100);
 		//返回剩余的artini条目数
 		return count-offset-1;
 	}
@@ -1020,6 +1038,58 @@ int updatedic(struct Artini oini,struct Artini nini){
 
 		return 1;
 	}
+}
+
+int addlike(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
+	char likepath[MAX_PATH_LEN],acodestr[11];
+	inttostr(acodestr,acode);
+	strcpy(likepath,DB_PATH[bcode]);
+	strcpy(likepath+strlen(likepath),acodestr);
+	strcpy(likepath+strlen(likepath),"/like");
+	if((FILE* f_l = fopen(likepath)) == NULL){
+		return -2;
+	}
+	fseek(f_l,0,SEEK_END);
+	int c = ftell(f_l)/sizeof(unsigned int);
+	rewind(f_l);
+	unsigned int ids[c];
+	fread(ids,sizeof(unsigned int),c,f_l);
+
+	for(int i=0;i<c;++i){
+		//检查该用户是否点过赞
+		if(userid == ids[i]){
+			fclose(f_l);
+			return -1;
+		}
+	}
+
+	fseek(f_l,0,SEEK_END);
+	fwrite(&userid,4,1,f_l);
+	fclose(f_l);
+
+	while(dic_stats[bcode] == BUSY);
+	dic_stats[bcode] = BUSY;
+
+	//更新目录中的点赞数
+	FILE* dic = fopen(DIC_PATH[bcode],"rb+");
+	fseek(dic,0,SEEK_END);
+	int count = ftell(dic)/sizeof(struct Artini);
+	rewind(dic);
+
+	struct Artini list[count];
+	fread(list,sizeof(struct Artini),count,dic);
+	fclose(dic);
+	for(int i=0;i<count;++i)
+		if(list[i].code == acode)
+			list[i].like += 1;
+	remove(DIC_PATH[bcode]);
+
+	dic = fopen(DIC_PATH[bcode],"rb+");
+	fwrite(list,sizeof(struct Artini),count,dic);
+	fclose(dic);
+	dic_stats[bcode] = READY;
+
+	return 1;
 }
 
 void inttostr(char* s,int l){
