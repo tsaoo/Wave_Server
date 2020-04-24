@@ -187,26 +187,8 @@ int main(void){
 			strcpy(cmtpath,DB_PATH[a]);
 			strcpy(cmtpath+strlen(cmtpath),acodestr);
 			strcpy(cmtpath+strlen(cmtpath),"/comment");
-			FILE* cmtfile = fopen(cmtpath,"rb+");
-			fseek(cmtfile,0,SEEK_END);
-			int cc = ftell(cmtfile)/sizeof(struct Cmtdat);
-			rewind(cmtfile);
-			struct Cmtdat cmts[cc];
-			fread(cmts,sizeof(struct Cmtdat),cc,cmtfile);
-			fclose(cmtfile);
-
 			remove(cmtfile);
-			struct NewCmtdat ncmts[cc];
-			memset(ncmts,0,sizeof(struct NewCmtdat)*cc);
-			cmtfile = fopen(cmtpath,"ab+");
-			for(int j=0;j<cc;j++){
-				memcpy(&ncmts[j].time,&cmts[j].time,sizeof(time_t));
-				memcpy(&ncmts[j].maker,&cmts[j].maker,100);
-				memcpy(&ncmts[j].makerid,&cmts[j].makerid,4);
-				memcpy(&ncmts[j].comment,&cmts[j].comment,784);
-			}
-			fwrite(ncmts,sizeof(struct NewCmtdat),cc,cmtfile);
-			fclose(cmtfile);
+
 		}
 	}
 }
