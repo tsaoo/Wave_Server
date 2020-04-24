@@ -157,7 +157,7 @@ void anacmd(char clnt_num,char* buffer){
 			char dat[PAKLEN-3];
 
 			//ini循环，每包3个
-			for(int j=0;j<3;j++){
+			for(int j=0;j<3&&(3*i+j)<=size;j++){
 				//尚可继续读取，则继续
 				int res = 0;
 				if(res=(readdic(ini,buffer[1],offset+i*3+j,clnt_users[clnt_num].id))>0){
@@ -168,6 +168,7 @@ void anacmd(char clnt_num,char* buffer){
 				//若返回0，则刚好读取完毕，停止读取，直接发送并终止传输
 				else if(res == 0){
 					for(int k=0;k<j+1;k++){
+						memcpy(inipack+j,ini,sizeof(struct Artini));
 						memcpy(dat+340*k+0,&inipack[k].code,4);
 						memcpy(dat+340*k+4,&inipack[k].bcode,1);
 						memcpy(dat+340*k+5,&inipack[k].time,4);
@@ -1072,6 +1073,7 @@ char getisliked(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
 }
 
 int addlike(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
+	printf("addlike:%d\n",acode);
 	char likepath[MAX_PATH_LEN];
 	char acodestr[11];
 	memset(acodestr,0,11);
@@ -1113,9 +1115,12 @@ int addlike(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
 	struct Artini list[count];
 	fread(list,sizeof(struct Artini),count,dic);
 	fclose(dic);
-	for(int i=0;i<count;++i)
-		if(list[i].code == acode)
+	for(int i=0;i<count;++i){
+		if(list[i].code == acode){
 			list[i].like += 1;
+			break;
+		}
+	}
 	remove(DIC_PATH[bcode]);
 
 	dic = fopen(DIC_PATH[bcode],"ab+");
