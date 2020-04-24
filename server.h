@@ -69,10 +69,10 @@
 //参数控制
 #define MAXCLNT 100
 #define MAX_PATH_LEN 256
-#define MAX_USERNAME_LEN 256
-#define MAX_PASSWORD_LEN 256
+#define MAX_USERNAME_LEN 100
+#define MAX_PASSWORD_LEN 100
 #define PAKLEN	1024
-#define MAX_TITLE_LEN 256
+#define MAX_TITLE_LEN 100
 #define ROOT "/server/"
 #define DB_ROOT "/server/db/"
 #define CONFIG_ROOT "/server/config/"
@@ -89,11 +89,11 @@ struct User
 };
 
 struct Cmtdat
-{
+{	
 	time_t time;
 	char maker[MAX_USERNAME_LEN];
 	int makerid;
-	char comment[765];
+	char comment[921];
 };
 
 struct Artini
@@ -112,7 +112,7 @@ struct Artini
 	char empty1;
 	char empty2;
 	char empty3;
-	int empty4;
+	int like;
 };
 
 struct Servconf{

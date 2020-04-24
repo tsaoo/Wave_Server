@@ -139,48 +139,85 @@ void anacmd(char clnt_num,char* buffer){
 			return;
 		}
 
-		//暂时默认每页10条————4/21
 		int offset = 0, size = 10;
 		memcpy(&offset,buffer+2,4);
-		//memcpy(&size,buffer+6,4);
-		struct Artini* ini = (struct Artini*)malloc(sizeof(struct Artini));
-		memset(ini,0,sizeof(struct Artini));
-		int last = 0;
+		memcpy(&size,buffer+6,4);
+
 		printf("client[%d](%s) is requiring list of block %d\n",clnt_num,clnt_users[clnt_num].name,buffer[1]);
 		writelog("GTLST client[%d](%s) requires list of block %d",clnt_num,clnt_users[clnt_num].name,buffer[1]);
-		//此次读取后剩余的artini数目>=0且只读取size次
-		for(offset;(last=readdic(ini,buffer[1],offset))>=0&&size>0;offset++){
-			size --;
+		
+		char over_flag = 0;
+		//包循环，共需发包size/3+1次
+		struct Artini* ini = (struct Artini*)(malloc(sizeof(struct Artini)));
+		memset(ini,0,sizeof(struct Artini));
+		for(int i=0;i<(size/3)+1;++i){
+
+			struct Artini* inipack = (struct Artini*)malloc(3*sizeof(struct Artini));
+			memset(inipack,0,3*sizeof(struct Artini));
 			char dat[PAKLEN-3];
-			memset(dat,0,PAKLEN-3);
 
-			memcpy(dat,&ini->code,4);
-			memcpy(dat+4,&ini->bcode,1);
-			memcpy(dat+5,&ini->time,4);
-			memcpy(dat+9,&ini->title,256);
-			memcpy(dat+265,&ini->author,256);
-			memcpy(dat+521,&ini->uploader,256);
-			memcpy(dat+777,&ini->length,4);
-			memcpy(dat+781,&ini->type,1);
-			memcpy(dat+782,&ini->repcount,2);
-			memcpy(dat+784,&ini->uploaderID,4);
-			memcpy(dat+788,&ini->ori,1);
+			//ini循环，每包3个
+			for(int j=0;j<3;j++){
+				//尚可继续读取，则继续
+				int res = 0;
+				if(rse=(readdic(ini,buffer[1],offset+i*3+j))>0){
+					memcpy(inipack+j,ini,sizeof(struct Artini));
+					memset(ini,0,sizeof(struct Artini));
+				}
 
-			memset(ini,0,sizeof(struct Artini));
-			if(size == 0){
-				senddat(clnt_num,ARTINI,dat,STOP,WAIT);
-				break;
+				//若返回0，则刚好读取完毕，停止读取，直接发送并终止传输
+				else if(res == 0){
+					for(int k=0;k<j+1;k++){
+						memcpy(dat+340*k+0,inipack[k].code,4);
+						memcpy(dat+340*k+4,inipack[k].code,1);
+						memcpy(dat+340*k+5,inipack[k].code,4);
+						memcpy(dat+340*k+9,inipack[k].code,100);
+						memcpy(dat+340*k+109,inipack[k].code,100);
+						memcpy(dat+340*k+209,inipack[k].code,100);
+						memcpy(dat+340*k+309,inipack[k].code,4);
+						memcpy(dat+340*k+313,inipack[k].code,1);
+						memcpy(dat+340*k+314,inipack[k].code,2);
+						memcpy(dat+340*k+316,inipack[k].code,4);
+						memcpy(dat+340*k+320,inipack[k].code,1);
+						memcpy(dat+340*k+321,inipack[k].code,4);
+					}
+					senddat(clnt_num,ARTINI,dat,STOP,WAIT);
+					free(inipack);
+					free(ini);
+					return;
+				}
+
+				//若返回-1，则目录为空，发送BNULL
+				else{
+					sendcmd(clnt_num,BNULL,WAIT);
+					free(inipack);
+					free(ini);
+					return;
+				}
 			}
-			if(last>=1)
+
+			//在包内3个ini读取完毕后，格式化数据，并发送这个包
+			for(int j=0;j<3;j++){
+				memcpy(dat+340*j+0,inipack[j].code,4);
+				memcpy(dat+340*j+4,inipack[j].code,1);
+				memcpy(dat+340*j+5,inipack[j].code,4);
+				memcpy(dat+340*j+9,inipack[j].code,100);
+				memcpy(dat+340*j+109,inipack[j].code,100);
+				memcpy(dat+340*j+209,inipack[j].code,100);
+				memcpy(dat+340*j+309,inipack[j].code,4);
+				memcpy(dat+340*j+313,inipack[j].code,1);
+				memcpy(dat+340*j+314,inipack[j].code,2);
+				memcpy(dat+340*j+316,inipack[j].code,4);
+				memcpy(dat+340*j+320,inipack[j].code,1);
+				memcpy(dat+340*j+321,inipack[j].code,4);
+			}
+			if(i<(size/3+1)-1)
 				senddat(clnt_num,ARTINI,dat,KEEP,WAIT);
-			else if(last == 0){
+			else
 				senddat(clnt_num,ARTINI,dat,STOP,WAIT);
-				break;
-			}
+
+			free(inipack);
 		}
-		//for在last=0时返回，若last=-1则必是空目录情况
-		if(last == -1)
-			sendcmd(clnt_num,BNULL,WAIT);
 		free(ini);
 		return;
 	}
