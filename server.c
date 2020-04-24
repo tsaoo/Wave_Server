@@ -160,7 +160,7 @@ void anacmd(char clnt_num,char* buffer){
 			for(int j=0;j<3;j++){
 				//尚可继续读取，则继续
 				int res = 0;
-				if(res=(readdic(ini,buffer[1],offset+i*3+j))>0){
+				if(res=(readdic(ini,buffer[1],offset+i*3+j,clnt_users[clnt_num].id))>0){
 					memcpy(inipack+j,ini,sizeof(struct Artini));
 					memset(ini,0,sizeof(struct Artini));
 				}
@@ -180,6 +180,7 @@ void anacmd(char clnt_num,char* buffer){
 						memcpy(dat+340*k+316,&inipack[k].uploaderID,4);
 						memcpy(dat+340*k+320,&inipack[k].ori,1);
 						memcpy(dat+340*k+321,&inipack[k].like,4);
+						memcpy(dat+340*k+325,&inipack[k].isliked,1)
 					}
 					senddat(clnt_num,ARTINI,dat,STOP,WAIT);
 					free(inipack);
@@ -210,6 +211,7 @@ void anacmd(char clnt_num,char* buffer){
 				memcpy(dat+340*j+316,&inipack[j].uploaderID,4);
 				memcpy(dat+340*j+320,&inipack[j].ori,1);
 				memcpy(dat+340*j+321,&inipack[j].like,4);
+				memcpy(dat+340*j+325,&inipack[j].isliked,1)
 			}
 			if(i<(size/3+1)-1)
 				senddat(clnt_num,ARTINI,dat,KEEP,WAIT);
@@ -510,7 +512,7 @@ void anacmd(char clnt_num,char* buffer){
 		return;
 	}
 
-	else (buffer[0] == ADLKE){
+	else if(buffer[0] == ADLKE){
 		ARTCODE acode = 0;
 		BLOCKCODE bcode = 0;
 		memcpy(&acode,buffer+1,4);
@@ -852,7 +854,7 @@ struct Cmtdat* readcmt(ARTCODE acode,BLOCKCODE bcode,int offset,int size,int* co
 }
 
 //读取artini目录，其返回值为本次读取后的剩余条目数
-int readdic(struct Artini* ini, BLOCKCODE bcode,int offset){
+int readdic(struct Artini* ini, BLOCKCODE bcode,int offset,unsigned int userid){
 	memset(ini,0,sizeof(struct Artini));
 	FILE* dic = fopen(DIC_PATH[bcode],"rb+");
 	fseek(dic,0,SEEK_END);
@@ -870,6 +872,7 @@ int readdic(struct Artini* ini, BLOCKCODE bcode,int offset){
 	else{
 		fclose(dic);
 		memcpy(&ini->uploader,locuser_byid(ini->uploaderID).name,100);
+		ini->isliked = getisliked(ini->code,ini->bcode,userid);
 		//返回剩余的artini条目数
 		return count-offset-1;
 	}
@@ -1038,6 +1041,31 @@ int updatedic(struct Artini oini,struct Artini nini){
 
 		return 1;
 	}
+}
+
+char getisliked(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
+	char likepath[MAX_PATH_LEN],acodestr[11];
+	inttostr(acodestr,acode);
+	strcpy(likepath,DB_PATH[bcode]);
+	strcpy(likepath+strlen(likepath),acodestr);
+	strcpy(likepath+strlen(likepath),"/like");
+	if((FILE* f_l = fopen(likepath)) == NULL){
+		return -2;
+	}
+	fseek(f_l,0,SEEK_END);
+	int c = ftell(f_l)/sizeof(unsigned int);
+	rewind(f_l);
+	unsigned int ids[c];
+	fread(ids,sizeof(unsigned int),c,f_l);
+
+	for(int i=0;i<c;++i){
+		//检查该用户是否点过赞
+		if(userid == ids[i]){
+			fclose(f_l);
+			return 1;
+		}
+	}
+	return 0;
 }
 
 int addlike(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){

@@ -111,7 +111,7 @@ struct Artini
 	int repcount;
 	int uploaderID;
 	char ori;
-	char empty1;
+	char isliked;
 	char empty2;
 	char empty3;
 	int like;
@@ -153,7 +153,7 @@ char p_up = 1;				//允许上传
 char p_refresh = 1;			//允许刷新
 char p_fo = 1;				//允许飞花令
 char p_comt = 1;			//允许评论
-char p_ann = 1;				//每日一句读取公告
+char p_ann = 0;				//每日一句读取公告
 
 char dic_stats[2] = {READY,READY};
 char* DB_PATH[2] = {"/server/db/0/","/server/db/1/"};
@@ -178,9 +178,10 @@ extern struct Artini locart(ARTCODE,BLOCKCODE);
 extern int getartcode(BLOCKCODE);
 extern int randartcode(BLOCKCODE);
 extern int checkartcode(struct Artini*,int,ARTCODE,BLOCKCODE);
-extern int readdic(struct Artini*, char,int);
+extern int readdic(struct Artini*, char,int,unsigned int);
 extern int adddic(struct Artini);
 extern int updatedic(struct Artini,struct Artini);
+extern char getisliked(ARTCODE,BLOCKCODE,unsigned int);
 extern int addlike(ARTCODE,BLOCKCODE,unsigned int);
 extern int readdv(int,struct DailyVerse*);
 extern int readdv_ann(struct DailyVerse*);
