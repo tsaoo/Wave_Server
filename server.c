@@ -160,7 +160,7 @@ void anacmd(char clnt_num,char* buffer){
 			for(int j=0;j<3;j++){
 				//尚可继续读取，则继续
 				int res = 0;
-				if(rse=(readdic(ini,buffer[1],offset+i*3+j))>0){
+				if(res=(readdic(ini,buffer[1],offset+i*3+j))>0){
 					memcpy(inipack+j,ini,sizeof(struct Artini));
 					memset(ini,0,sizeof(struct Artini));
 				}
@@ -257,14 +257,15 @@ void anacmd(char clnt_num,char* buffer){
 		struct Artini ini;
 		memcpy(&ini.bcode,buffer+5,1);
 		memcpy(&ini.time,buffer+6,4);
-		memcpy(&ini.title,buffer+10,256);
-		memcpy(&ini.author,buffer+266,256);
-		//memcpy(&ini.uploader,buffer+522,256);
-		memcpy(&ini.length,buffer+778,4);
-		memcpy(&ini.type,buffer+782,1);
-		memcpy(&ini.repcount,buffer+783,2);
-		memcpy(&ini.uploaderID,buffer+785,4);
-		memcpy(&ini.ori,buffer+789,1);
+		memcpy(&ini.title,buffer+10,100);
+		memcpy(&ini.author,buffer+110,100);
+		//memcpy(&ini.uploader,buffer+220,110);
+		memcpy(&ini.length,buffer+310,4);
+		memcpy(&ini.type,buffer+314,1);
+		memcpy(&ini.repcount,buffer+315,2);
+		memcpy(&ini.uploaderID,buffer+317,4);
+		memcpy(&ini.ori,buffer+321,1);
+		memcpy(&ini.like,buffer+322,4);
 		ini.code = getartcode(ini.bcode);
 		printf("client[%d](%s) is uploading %s(%d) size:%d to block %d\n",clnt_num,clnt_users[clnt_num].name,ini.title,ini.code,ini.length,ini.bcode);
 		writelog("ARTINI client[%d](%s) start uploading %s(%d) size:%d to block %d",clnt_num,clnt_users[clnt_num].name,ini.title,ini.code,ini.length,ini.bcode);		
@@ -318,7 +319,7 @@ void anacmd(char clnt_num,char* buffer){
 		memset(&cmt,0,sizeof(struct Cmtdat));
 		memcpy(&acode,buffer+1,4);
 		memcpy(&bcode,buffer+5,1);
-		memcpy(&cmt.comment,buffer+6,765);
+		memcpy(&cmt.comment,buffer+6,921);
 		cmt.time = time(NULL);
 		cmt.makerid = clnt_users[clnt_num].id;
 
@@ -351,8 +352,8 @@ void anacmd(char clnt_num,char* buffer){
 		for(int i=0;i<count;++i){
 			char dat[1021];
 			memset(dat,0,1021);
-			memcpy(dat,cmtlist[i].maker,256);
-			memcpy(dat+256,cmtlist[i].comment,765);
+			memcpy(dat,cmtlist[i].maker,100);
+			memcpy(dat+100,cmtlist[i].comment,921);
 			if(i<count-1){
 				senddat(clnt_num,COMTDL,dat,KEEP,WAIT);
 				//printf("send COMTDL KEEP\n");
