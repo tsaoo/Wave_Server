@@ -12,7 +12,7 @@ int main(int argc,char* argv[]){
 
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
-	serv_addr.sin_port = htons(26535);
+	serv_addr.sin_port = htons(26534);
 	bind(serv_sock,(struct sockaddr*)&serv_addr,sizeof(serv_addr));
 
 	listen(serv_sock,maxclnt);		//启动监听，队列最长为MAXCLNT
@@ -180,7 +180,7 @@ void anacmd(char clnt_num,char* buffer){
 						memcpy(dat+340*k+316,&inipack[k].uploaderID,4);
 						memcpy(dat+340*k+320,&inipack[k].ori,1);
 						memcpy(dat+340*k+321,&inipack[k].like,4);
-						memcpy(dat+340*k+325,&inipack[k].isliked,1)
+						memcpy(dat+340*k+325,&inipack[k].isliked,1);
 					}
 					senddat(clnt_num,ARTINI,dat,STOP,WAIT);
 					free(inipack);
@@ -211,7 +211,7 @@ void anacmd(char clnt_num,char* buffer){
 				memcpy(dat+340*j+316,&inipack[j].uploaderID,4);
 				memcpy(dat+340*j+320,&inipack[j].ori,1);
 				memcpy(dat+340*j+321,&inipack[j].like,4);
-				memcpy(dat+340*j+325,&inipack[j].isliked,1)
+				memcpy(dat+340*j+325,&inipack[j].isliked,1);
 			}
 			if(i<(size/3+1)-1)
 				senddat(clnt_num,ARTINI,dat,KEEP,WAIT);
@@ -518,7 +518,7 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(&acode,buffer+1,4);
 		memcpy(&bcode,buffer+5,1);
 
-		if(addlike(acode,bcode,users[clnt_num].id) <= 0)
+		if(addlike(acode,bcode,clnt_users[clnt_num].id) <= 0)
 			sendcmd(clnt_num,DATFAIL,WAIT);
 		else
 			sendcmd(clnt_num,DATSUCS,WAIT);
@@ -1044,13 +1044,16 @@ int updatedic(struct Artini oini,struct Artini nini){
 }
 
 char getisliked(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
-	char likepath[MAX_PATH_LEN],acodestr[11];
+	char likepath[MAX_PATH_LEN];
+	char acodestr[11];
+	memset(acodestr,0,11);
 	inttostr(acodestr,acode);
 	strcpy(likepath,DB_PATH[bcode]);
 	strcpy(likepath+strlen(likepath),acodestr);
 	strcpy(likepath+strlen(likepath),"/like");
-	if((FILE* f_l = fopen(likepath)) == NULL){
-		return -2;
+	FILE* f_l;
+	if((f_l = fopen(likepath,"rb+")) == NULL){
+		f_l = fopen(likepath,"ab+");
 	}
 	fseek(f_l,0,SEEK_END);
 	int c = ftell(f_l)/sizeof(unsigned int);
@@ -1069,12 +1072,15 @@ char getisliked(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
 }
 
 int addlike(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
-	char likepath[MAX_PATH_LEN],acodestr[11];
+	char likepath[MAX_PATH_LEN];
+	char acodestr[11];
+	memset(acodestr,0,11);
 	inttostr(acodestr,acode);
 	strcpy(likepath,DB_PATH[bcode]);
 	strcpy(likepath+strlen(likepath),acodestr);
 	strcpy(likepath+strlen(likepath),"/like");
-	if((FILE* f_l = fopen(likepath)) == NULL){
+	FILE* f_l;
+	if((f_l = fopen(likepath,"ab+")) == NULL){
 		return -2;
 	}
 	fseek(f_l,0,SEEK_END);
@@ -1112,7 +1118,7 @@ int addlike(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
 			list[i].like += 1;
 	remove(DIC_PATH[bcode]);
 
-	dic = fopen(DIC_PATH[bcode],"rb+");
+	dic = fopen(DIC_PATH[bcode],"ab+");
 	fwrite(list,sizeof(struct Artini),count,dic);
 	fclose(dic);
 	dic_stats[bcode] = READY;
