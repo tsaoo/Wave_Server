@@ -67,7 +67,7 @@
 #define STOP	0xFF
 
 //参数控制
-#define MAXCLNT 50
+#define MAXCLNT 100
 #define MAX_PATH_LEN 256
 #define MAX_USERNAME_LEN 256
 #define MAX_PASSWORD_LEN 256
@@ -79,6 +79,7 @@
 #define LOG_PATH "/server/config/log/"
 #define USERLIST_PATH "/server/config/userlist"
 #define DV_PATH "/server/db/dv"
+#define DV_ANN_PATH "/server/db/dv_ann"
 
 struct User
 {
@@ -107,8 +108,11 @@ struct Artini
 	char type;
 	int repcount;
 	int uploaderID;
-	int empty1;
-	int empty2;
+	char ori;
+	char empty1;
+	char empty2;
+	char empty3;
+	int empty4;
 };
 
 struct Servconf{
@@ -119,6 +123,7 @@ struct Servconf{
 	char refresh;
 	char log;
 	char fo;
+	char ann;
 	int checksum;
 };
 
@@ -146,6 +151,7 @@ char p_up = 1;				//允许上传
 char p_refresh = 1;			//允许刷新
 char p_fo = 1;				//允许飞花令
 char p_comt = 1;			//允许评论
+char p_ann = 1;				//每日一句读取公告
 
 char dic_stats[2] = {READY,READY};
 char* DB_PATH[2] = {"/server/db/0/","/server/db/1/"};
@@ -174,6 +180,7 @@ extern int readdic(struct Artini*, char,int);
 extern int adddic(struct Artini);
 extern int updatedic(struct Artini,struct Artini);
 extern int readdv(int,struct DailyVerse*);
+extern int readdv_ann(struct DailyVerse*);
 extern void inttostr(char*,int);
 extern void writelog(char*,...);
 extern void throwex(char*,...);

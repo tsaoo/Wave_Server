@@ -68,6 +68,7 @@ void clnt_func(){
 		memset(buffer,0,PAKLEN-1);
 	}
 	printf("client[%d] disconnected\n",clnt_num);
+	writelog("DISCON client[%d](%s) disconnected",clnt_num,clnt_users[clnt_num].name);
 	conclnt --;
 	return;
 }
@@ -95,7 +96,7 @@ void anacmd(char clnt_num,char* buffer){
 		adduser(&newuser);
 		sendcmd(clnt_num,REGSUCS,WAIT);
 		printf("client[%d] registed name:%s pw:%s\n",clnt_num,newuser.name,newuser.pw);
-		writelog("client[%d] registed name:%s pw:%s\n",clnt_num,newuser.name,newuser.pw);
+		writelog("REG client[%d] registed name:%s pw:%s\n",clnt_num,newuser.name,newuser.pw);
 		return;
 	}
 
@@ -138,9 +139,10 @@ void anacmd(char clnt_num,char* buffer){
 			return;
 		}
 
-		int offset = 0, size = 0;
+		//暂时默认每页10条————4/21
+		int offset = 0, size = 10;
 		memcpy(&offset,buffer+2,4);
-		memcpy(&size,buffer+6,4);
+		//memcpy(&size,buffer+6,4);
 		struct Artini* ini = (struct Artini*)malloc(sizeof(struct Artini));
 		memset(ini,0,sizeof(struct Artini));
 		int last = 0;
@@ -162,6 +164,7 @@ void anacmd(char clnt_num,char* buffer){
 			memcpy(dat+781,&ini->type,1);
 			memcpy(dat+782,&ini->repcount,2);
 			memcpy(dat+784,&ini->uploaderID,4);
+			memcpy(dat+788,&ini->ori,1);
 
 			memset(ini,0,sizeof(struct Artini));
 			if(size == 0){
@@ -224,6 +227,7 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(&ini.type,buffer+782,1);
 		memcpy(&ini.repcount,buffer+783,2);
 		memcpy(&ini.uploaderID,buffer+785,4);
+		memcpy(&ini.ori,buffer+789,1);
 		ini.code = getartcode(ini.bcode);
 		printf("client[%d](%s) is uploading %s(%d) size:%d to block %d\n",clnt_num,clnt_users[clnt_num].name,ini.title,ini.code,ini.length,ini.bcode);
 		writelog("ARTINI client[%d](%s) start uploading %s(%d) size:%d to block %d",clnt_num,clnt_users[clnt_num].name,ini.title,ini.code,ini.length,ini.bcode);		
@@ -353,9 +357,11 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(conf+11,&p_refresh,1);
 		memcpy(conf+12,&p_log,1);
 		memcpy(conf+13,&p_fo,1);
-		int checksum = maxclnt+p_reg+p_up+p_comt+p_refresh+p_log+p_fo;
-		memcpy(conf+14,&checksum,4);
+		memcpy(conf+14,&p_ann,1);
+		int checksum = maxclnt+p_reg+p_up+p_comt+p_refresh+p_log+p_fo+p_ann;
+		memcpy(conf+15,&checksum,4);
 		senddat(clnt_num,STAT,conf,STOP,WAIT);
+		writelog("GTSTAT client[%d](%s)",clnt_num,clnt_users[clnt_num].name); 
 		return;
 	}
 
@@ -369,16 +375,17 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(&conf->refresh,buffer+12,1);
 		memcpy(&conf->log,buffer+13,1);
 		memcpy(&conf->fo,buffer+14,1);
-		memcpy(&conf->checksum,buffer+15,4);
-		int checksum = conf->maxc+conf->reg+conf->up+conf->comt+conf->refresh+conf->log+conf->fo;
+		memcpy(&conf->checksum,buffer+16,4);
+		memcpy(&conf->ann,buffer+15,1);
+		int checksum = conf->maxc+conf->reg+conf->up+conf->comt+conf->refresh+conf->log+conf->fo+conf->ann;
 		if(checksum != conf->checksum){
 			sendcmd(clnt_num,DATFAIL,WAIT);
 			return;
 		}
-		printf("client[%d](%s) set server config\n\tmaxclient=%d p_reg=%d p_up=%d p_comt=%d p_refresh=%d p_log=%d p_fo=%d\n",
-			clnt_num,clnt_users[clnt_num].name,conf->maxc,conf->reg,conf->up,conf->comt,conf->refresh,conf->log,conf->fo);
-		writelog("SETSTAT client[%d](%s) set server config\n\tmaxclient=%d p_reg=%d p_up=%d p_comt=%d p_refresh=%d p_log=%d p_fo=%d",
-			clnt_num,clnt_users[clnt_num].name,conf->maxc,conf->reg,conf->up,conf->comt,conf->refresh,conf->log,conf->fo);
+		printf("client[%d](%s) set server config\n\tmaxclient=%d p_reg=%d p_up=%d p_comt=%d p_refresh=%d p_log=%d p_fo=%d p_ann=%d\n",
+			clnt_num,clnt_users[clnt_num].name,conf->maxc,conf->reg,conf->up,conf->comt,conf->refresh,conf->log,conf->fo,conf->ann);
+		writelog("SETSTAT client[%d](%s) set server config\n\tmaxclient=%d p_reg=%d p_up=%d p_comt=%d p_refresh=%d p_log=%d p_fo=%d p_ann=%d",
+			clnt_num,clnt_users[clnt_num].name,conf->maxc,conf->reg,conf->up,conf->comt,conf->refresh,conf->log,conf->fo,conf->ann);
 
 		maxclnt = conf->maxc;
 		p_reg = conf->reg;
@@ -387,6 +394,7 @@ void anacmd(char clnt_num,char* buffer){
 		p_refresh = conf->refresh;
 		p_log = conf->log;
 		p_fo = conf->fo;
+		p_ann = conf->ann;
 
 		sendcmd(clnt_num,DATSUCS,WAIT);
 		return;
@@ -397,7 +405,7 @@ void anacmd(char clnt_num,char* buffer){
 			sendcmd(clnt_num,DATSUCS,WAIT);
 		else
 			sendcmd(clnt_num,REJ,WAIT);
-		writelog("REQFO client[%d](%s) ask permission to FO",clnt_num,clnt_users[clnt_num].name);
+		writelog("REQFO client[%d](%s)",clnt_num,clnt_users[clnt_num].name);
 		return;
 	}
 
@@ -411,6 +419,18 @@ void anacmd(char clnt_num,char* buffer){
 		memcpy(&index,buffer+1,4);
 		struct DailyVerse* dv = (struct DailyVerse*)(malloc(sizeof(struct DailyVerse)));
 		memset(dv,0,sizeof(struct DailyVerse));
+
+		if(p_ann == 1){
+			if(readdv_ann(dv) <= 0){
+				sendcmd(clnt_num,REJ,WAIT);
+				return;
+			}
+			char dat[1021];
+			memcpy(dat,dv,sizeof(struct DailyVerse));
+			senddat(clnt_num,DV,dat,STOP,WAIT);
+			return;
+		}
+
 		if(readdv(index,dv) <= 0){
 			sendcmd(clnt_num,REJ,WAIT);
 			return;
@@ -428,6 +448,9 @@ void anacmd(char clnt_num,char* buffer){
 		BLOCKCODE bcode = 0;
 		memcpy(&acode,buffer+1,sizeof(ARTCODE));
 		memcpy(&bcode,buffer+1+sizeof(ARTCODE),sizeof(BLOCKCODE));
+
+		printf("client[%d](%s) reset position of %d \n",clnt_num,clnt_users[clnt_num].name,acode);
+		writelog("MVART client[%d](%s) %d ori:%d",clnt_num,clnt_users[clnt_num].name,acode,bcode);
 		
 		struct Artini oini = locart(acode,bcode);
 		if(oini.code == 0){
@@ -436,6 +459,10 @@ void anacmd(char clnt_num,char* buffer){
 		}
 		
 		struct Artini nini = oini;
+		if(nini.bcode == 0)
+			nini.bcode = 1;
+		else
+			nini.bcode = 0;
 		if(updatedic(oini,nini) != 1){
 			sendcmd(clnt_num,DATFAIL,WAIT);
 			return;
@@ -687,6 +714,10 @@ int readart(struct Artini ini,char* buf,int offset,size_t size){
 }
 
 int deleteart(ARTCODE acode,BLOCKCODE bcode){
+	if(locart(acode,bcode).code == 0){
+		return -1;
+	}
+
 	FILE* dic = fopen(DIC_PATH[bcode],"rb+");
 	fseek(dic,0,SEEK_END);
 	int count = ftell(dic)/sizeof(struct Artini);
@@ -903,37 +934,16 @@ int updatedic(struct Artini oini,struct Artini nini){
 		dic_stats[oini.bcode] = READY;
 		return 1;
 	}else{
-		//删除原目录文件下的oini条目
-		while(dic_stats[oini.bcode] == BUSY);
-		dic_stats[oini.bcode] = BUSY;
-
-		FILE* dic = fopen(DIC_PATH[oini.bcode],"rb+");
-		fseek(dic,0,SEEK_END);
-		int count = ftell(dic)/sizeof(struct Artini);
-		rewind(dic);
-
-		struct Artini list[count];
-		fread(list,sizeof(struct Artini),count,dic);
-		rewind(dic);
-		for(int i=0;i<count;++i){
-			if(list[count].code == oini.code){
-				for(int j=0;j<i;++j)
-					fwrite(&list[j],sizeof(struct Artini),1,dic);
-				for(int j=i+1;j<count;++j)
-					fwrite(&list[j],sizeof(struct Artini),1,dic);
-				break;
-			}
-		}
-		fclose(dic);
-		dic_stats[oini.bcode] = READY;
-
 		//在新目录增添nini条目
 		while(dic_stats[nini.bcode] == BUSY);
 		dic_stats[nini.bcode] = BUSY;
 
-		dic = fopen(DIC_PATH[nini.bcode],"rb+");
+		//分配新的ArtCOde
+		nini.code = getartcode(nini.bcode);
+
+		FILE* dic = fopen(DIC_PATH[nini.bcode],"rb+");
 		fseek(dic,0,SEEK_END);
-		count = ftell(dic)/sizeof(struct Artini);
+		int count = ftell(dic)/sizeof(struct Artini);
 		rewind(dic);
 
 		struct Artini nlist[count+1];
@@ -942,6 +952,34 @@ int updatedic(struct Artini oini,struct Artini nini){
 		nlist[0] = nini;
 		fwrite(nlist,sizeof(struct Artini),count+1,dic);
 		fclose(dic);
+
+		char buf[1000];
+		int offset = 0;
+		int readlen = 0;
+		memset(buf,0,1000);
+		while((readlen=readart(oini,buf,offset,1000)) > 0){
+			createart(nini,buf,offset,readlen);
+			offset+=readlen;
+		}
+
+		int cmtcount = 0;
+		offset = 0;
+		struct Cmtdat* cmt = (struct Cmtdat*)(malloc(sizeof(struct Cmtdat)));
+		for(offset;offset<cmtcount;cmt = readcmt(oini.code,oini.bcode,offset,1,&cmtcount)){
+			addcomment(nini.code,nini.bcode,*cmt);
+		}
+		free(cmt);
+
+		dic_stats[nini.bcode] = READY;
+
+		//删除原目录文件下的oini条目	
+		while(dic_stats[oini.bcode] == BUSY);
+		dic_stats[oini.bcode] = BUSY;
+
+		deleteart(oini.code,oini.bcode);
+
+		dic_stats[oini.bcode] = READY;
+
 		return 1;
 	}
 }
@@ -955,6 +993,13 @@ void inttostr(char* s,int l){
 int readdv(int index,struct DailyVerse* dv){
 	FILE* d_file = fopen(DV_PATH,"rb+");
 	fseek(d_file,(index-1)*sizeof(struct DailyVerse),SEEK_SET);
+	int res = fread(dv,sizeof(struct DailyVerse),1,d_file);
+	fclose(d_file);
+	return res;
+}
+
+int readdv_ann(struct DailyVerse* dv){
+	FILE* d_file = fopen(DV_ANN_PATH,"rb+");
 	int res = fread(dv,sizeof(struct DailyVerse),1,d_file);
 	fclose(d_file);
 	return res;
