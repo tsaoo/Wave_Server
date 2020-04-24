@@ -516,13 +516,21 @@ void anacmd(char clnt_num,char* buffer){
 	else if(buffer[0] == ADLKE){
 		ARTCODE acode = 0;
 		BLOCKCODE bcode = 0;
+		char op = buffer[6];
 		memcpy(&acode,buffer+1,4);
 		memcpy(&bcode,buffer+5,1);
 
-		if(addlike(acode,bcode,clnt_users[clnt_num].id) <= 0)
-			sendcmd(clnt_num,DATFAIL,WAIT);
-		else
-			sendcmd(clnt_num,DATSUCS,WAIT);
+		if(op == 0){
+			if(addlike(acode,bcode,clnt_users[clnt_num].id) <= 0)
+				sendcmd(clnt_num,DATFAIL,WAIT);
+			else
+				sendcmd(clnt_num,DATSUCS,WAIT);
+		}else{
+			if(minlike(acode,bcode,clnt_users[clnt_num].id) <= 0)
+				sendcmd(clnt_num,DATFAIL,WAIT);
+			else
+				sendcmd(clnt_num,DATSUCS,WAIT);			
+		}
 		return;
 	}
 	//sendcmd(clnt_num,REJ,WAIT);
@@ -1072,6 +1080,73 @@ char getisliked(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
 	return 0;
 }
 
+int minlike(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
+	printf("addlike:%d\n",acode);
+	char likepath[MAX_PATH_LEN];
+	char acodestr[11];
+	memset(acodestr,0,11);
+	inttostr(acodestr,acode);
+	strcpy(likepath,DB_PATH[bcode]);
+	strcpy(likepath+strlen(likepath),acodestr);
+	strcpy(likepath+strlen(likepath),"/like");
+	FILE* f_l;
+	if((f_l = fopen(likepath,"ab+")) == NULL){
+		return -2;
+	}
+	fseek(f_l,0,SEEK_END);
+	int c = ftell(f_l)/sizeof(unsigned int);
+	rewind(f_l);
+	unsigned int ids[c],nids[c-1];
+	fread(ids,sizeof(unsigned int),c,f_l);
+
+	char flag = 0;
+	for(int i=0;i<c;++i){
+		//检查该用户是否点过赞
+		if(userid == ids[i]){
+			flag = 1;
+			for(int j=0;j<i;j++)
+				nids[j] = ids[j];
+			for(int j=i+1;j<c;j++)
+				nids[j] = ids[j];
+		}
+	}
+	if(flag == 0){
+		fclose(f_l);
+		return -1;
+	}
+
+	remove(likepath);
+	f_l = fopen(likepath,"ab+");
+	fwrite(nids,4,c-1,f_l);
+	fclose(f_l);
+
+	while(dic_stats[bcode] == BUSY);
+	dic_stats[bcode] = BUSY;
+
+	//更新目录中的点赞数
+	FILE* dic = fopen(DIC_PATH[bcode],"rb+");
+	fseek(dic,0,SEEK_END);
+	int count = ftell(dic)/sizeof(struct Artini);
+	rewind(dic);
+
+	struct Artini list[count];
+	fread(list,sizeof(struct Artini),count,dic);
+	fclose(dic);
+	for(int i=0;i<count;++i){
+		if(list[i].code == acode){
+			list[i].like -= 1;
+			break;
+		}
+	}
+	remove(DIC_PATH[bcode]);
+
+	dic = fopen(DIC_PATH[bcode],"ab+");
+	fwrite(list,sizeof(struct Artini),count,dic);
+	fclose(dic);
+	dic_stats[bcode] = READY;
+
+	return 1;
+}
 int addlike(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
 	printf("addlike:%d\n",acode);
 	char likepath[MAX_PATH_LEN];

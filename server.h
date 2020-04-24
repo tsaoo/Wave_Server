@@ -182,6 +182,7 @@ extern int readdic(struct Artini*, char,int,unsigned int);
 extern int adddic(struct Artini);
 extern int updatedic(struct Artini,struct Artini);
 extern char getisliked(ARTCODE,BLOCKCODE,unsigned int);
+extern int minlike(ARTCODE,BLOCKCODE,unsigned int);
 extern int addlike(ARTCODE,BLOCKCODE,unsigned int);
 extern int readdv(int,struct DailyVerse*);
 extern int readdv_ann(struct DailyVerse*);
