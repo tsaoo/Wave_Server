@@ -168,18 +168,18 @@ void anacmd(char clnt_num,char* buffer){
 				//若返回0，则刚好读取完毕，停止读取，直接发送并终止传输
 				else if(res == 0){
 					for(int k=0;k<j+1;k++){
-						memcpy(dat+340*k+0,inipack[k].code,4);
-						memcpy(dat+340*k+4,inipack[k].code,1);
-						memcpy(dat+340*k+5,inipack[k].code,4);
-						memcpy(dat+340*k+9,inipack[k].code,100);
-						memcpy(dat+340*k+109,inipack[k].code,100);
-						memcpy(dat+340*k+209,inipack[k].code,100);
-						memcpy(dat+340*k+309,inipack[k].code,4);
-						memcpy(dat+340*k+313,inipack[k].code,1);
-						memcpy(dat+340*k+314,inipack[k].code,2);
-						memcpy(dat+340*k+316,inipack[k].code,4);
-						memcpy(dat+340*k+320,inipack[k].code,1);
-						memcpy(dat+340*k+321,inipack[k].code,4);
+						memcpy(dat+340*k+0,&inipack[k].code,4);
+						memcpy(dat+340*k+4,&inipack[k].bcode,1);
+						memcpy(dat+340*k+5,&inipack[k].time,4);
+						memcpy(dat+340*k+9,&inipack[k].title,100);
+						memcpy(dat+340*k+109,&inipack[k].author,100);
+						memcpy(dat+340*k+209,&inipack[k].uploader,100);
+						memcpy(dat+340*k+309,&inipack[k].length,4);
+						memcpy(dat+340*k+313,&inipack[k].type,1);
+						memcpy(dat+340*k+314,&inipack[k].repcount,2);
+						memcpy(dat+340*k+316,&inipack[k].uploaderID,4);
+						memcpy(dat+340*k+320,&inipack[k].ori,1);
+						memcpy(dat+340*k+321,&inipack[k].like,4);
 					}
 					senddat(clnt_num,ARTINI,dat,STOP,WAIT);
 					free(inipack);
@@ -198,18 +198,18 @@ void anacmd(char clnt_num,char* buffer){
 
 			//在包内3个ini读取完毕后，格式化数据，并发送这个包
 			for(int j=0;j<3;j++){
-				memcpy(dat+340*j+0,inipack[j].code,4);
-				memcpy(dat+340*j+4,inipack[j].code,1);
-				memcpy(dat+340*j+5,inipack[j].code,4);
-				memcpy(dat+340*j+9,inipack[j].code,100);
-				memcpy(dat+340*j+109,inipack[j].code,100);
-				memcpy(dat+340*j+209,inipack[j].code,100);
-				memcpy(dat+340*j+309,inipack[j].code,4);
-				memcpy(dat+340*j+313,inipack[j].code,1);
-				memcpy(dat+340*j+314,inipack[j].code,2);
-				memcpy(dat+340*j+316,inipack[j].code,4);
-				memcpy(dat+340*j+320,inipack[j].code,1);
-				memcpy(dat+340*j+321,inipack[j].code,4);
+				memcpy(dat+340*j+0,&inipack[j].code,4);
+				memcpy(dat+340*j+4,&inipack[j].bcode,1);
+				memcpy(dat+340*j+5,&inipack[j].time,4);
+				memcpy(dat+340*j+9,&inipack[j].title,100);
+				memcpy(dat+340*j+109,&inipack[j].author,100);
+				memcpy(dat+340*j+209,&inipack[j].uploader,100);
+				memcpy(dat+340*j+309,&inipack[j].length,4);
+				memcpy(dat+340*j+313,&inipack[j].type,1);
+				memcpy(dat+340*j+314,&inipack[j].repcount,2);
+				memcpy(dat+340*j+316,&inipack[j].uploaderID,4);
+				memcpy(dat+340*j+320,&inipack[j].ori,1);
+				memcpy(dat+340*j+321,&inipack[j].like,4);
 			}
 			if(i<(size/3+1)-1)
 				senddat(clnt_num,ARTINI,dat,KEEP,WAIT);
