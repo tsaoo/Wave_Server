@@ -533,6 +533,98 @@ void anacmd(char clnt_num,char* buffer){
 		}
 		return;
 	}
+
+	else if(buffer[0] == GTMINE){
+		if(p_refresh == 0){
+			sendcmd(clnt_num,REJ,WAIT);
+			return;
+		}
+
+		int offset = 0, size = 10;
+		memcpy(&offset,buffer+2,4);
+		memcpy(&size,buffer+6,4);
+
+		printf("client[%d](%s) is requiring own list of block %d\n",clnt_num,clnt_users[clnt_num].name,buffer[1]);
+		writelog("GTMINE client[%d](%s) requires own list of block %d",clnt_num,clnt_users[clnt_num].name,buffer[1]);
+		
+		char over_flag = 0;
+		//包循环，共需发包size/3+1次
+		struct Artini* ini = (struct Artini*)(malloc(sizeof(struct Artini)));
+		memset(ini,0,sizeof(struct Artini));
+		for(int i=0;i<(size/3)+1;++i){
+
+			struct Artini* inipack = (struct Artini*)malloc(3*sizeof(struct Artini));
+			memset(inipack,0,3*sizeof(struct Artini));
+			char dat[PAKLEN-3];
+
+			//ini循环，每包3个
+			for(int j=0;j<3&&(3*i+j)<=size;j++){
+				//尚可继续读取，则继续
+				int res = 0;
+				if(res=(readdic_byuser(ini,buffer[1],offset+i*3+j,clnt_users[clnt_num].id))>0){
+					memcpy(inipack+j,ini,sizeof(struct Artini));
+					memset(ini,0,sizeof(struct Artini));
+				}
+
+				//若返回0，则刚好读取完毕，停止读取，直接发送并终止传输
+				else if(res == 0){
+					for(int k=0;k<j+1;k++){
+						memcpy(inipack+j,ini,sizeof(struct Artini));
+						memcpy(dat+340*k+0,&inipack[k].code,4);
+						memcpy(dat+340*k+4,&inipack[k].bcode,1);
+						memcpy(dat+340*k+5,&inipack[k].time,4);
+						memcpy(dat+340*k+9,&inipack[k].title,100);
+						memcpy(dat+340*k+109,&inipack[k].author,100);
+						memcpy(dat+340*k+209,&inipack[k].uploader,100);
+						memcpy(dat+340*k+309,&inipack[k].length,4);
+						memcpy(dat+340*k+313,&inipack[k].type,1);
+						memcpy(dat+340*k+314,&inipack[k].repcount,2);
+						memcpy(dat+340*k+316,&inipack[k].uploaderID,4);
+						memcpy(dat+340*k+320,&inipack[k].ori,1);
+						memcpy(dat+340*k+321,&inipack[k].like,4);
+						memcpy(dat+340*k+325,&inipack[k].isliked,1);
+					}
+					senddat(clnt_num,ARTINI,dat,STOP,WAIT);
+					free(inipack);
+					free(ini);
+					return;
+				}
+
+				//若返回-1，则目录为空，发送BNULL
+				else{
+					sendcmd(clnt_num,BNULL,WAIT);
+					free(inipack);
+					free(ini);
+					return;
+				}
+			}
+
+			//在包内3个ini读取完毕后，格式化数据，并发送这个包
+			for(int j=0;j<3;j++){
+				memcpy(dat+340*j+0,&inipack[j].code,4);
+				memcpy(dat+340*j+4,&inipack[j].bcode,1);
+				memcpy(dat+340*j+5,&inipack[j].time,4);
+				memcpy(dat+340*j+9,&inipack[j].title,100);
+				memcpy(dat+340*j+109,&inipack[j].author,100);
+				memcpy(dat+340*j+209,&inipack[j].uploader,100);
+				memcpy(dat+340*j+309,&inipack[j].length,4);
+				memcpy(dat+340*j+313,&inipack[j].type,1);
+				memcpy(dat+340*j+314,&inipack[j].repcount,2);
+				memcpy(dat+340*j+316,&inipack[j].uploaderID,4);
+				memcpy(dat+340*j+320,&inipack[j].ori,1);
+				memcpy(dat+340*j+321,&inipack[j].like,4);
+				memcpy(dat+340*j+325,&inipack[j].isliked,1);
+			}
+			if(i<(size/3+1)-1)
+				senddat(clnt_num,ARTINI,dat,KEEP,WAIT);
+			else
+				senddat(clnt_num,ARTINI,dat,STOP,WAIT);
+
+			free(inipack);
+		}
+		free(ini);
+		return;
+	}
 	//sendcmd(clnt_num,REJ,WAIT);
 }
 
@@ -887,6 +979,51 @@ int readdic(struct Artini* ini, BLOCKCODE bcode,int offset,unsigned int userid){
 	}
 }
 
+int getcount_byuser(BLOCKCODE bcode,unsigned int userid){
+	FILE* dic = fopen(DIC_PATH[bcode],"rb+");
+	fseek(dic,0,SEEK_END);
+	int all = ftell(dic)/sizeof(struct Artini);
+	rewind(dic);
+
+	int c = 0;
+	struct Artini list[c];
+	fread(list,sizeof(struct Artini),c,dic);
+	fclose(dic);
+	for(int i=0;i<c;++i){
+		if(list[c].userid == userid)
+			c += 1;
+	}
+	return c;
+}
+
+int readdic_byuser(struct Artini* ini,int offset,BLOCKCODE bcode,unsigned int userid){
+	int skip = offset;
+	memset(ini,0,sizeof(struct Artini));
+	int c = getcount_byuser(bcode,userid);
+	if(offset >= c)
+		return -1;
+
+	FILE* dic = fopen(DIC_PATH[bcode],"rb+");
+	fseek(dic,0,SEEK_END);
+	int all = ftell(dic)/sizeof(struct Artini);
+	rewind(dic);
+	struct Artini list[all];
+	fread(list,sizeof(Artini),all,dic);
+	fclose(dic);	
+
+	for(int i=0;i<all;++i){
+		if(list[i].userid == userid){
+			if(skip == 0){
+				memcpy(ini,&list[i],sizeof(sturct Artini));
+				memcpy(&ini->uploader,locuser_byid(ini->uploaderID).name,100);
+				ini->isliked = getisliked(ini->code,ini->bcode,userid);
+				return c-offset-1;
+			}else
+				skip -= 1;
+		}
+	}
+}
+
 //获取一个可用的code
 int getartcode(BLOCKCODE bcode){
 	//非递归部分，用于获取list和count
@@ -1209,6 +1346,12 @@ int addlike(ARTCODE acode,BLOCKCODE bcode,unsigned int userid){
 void inttostr(char* s,int l){
 	for(int i=0;i<10;i++)
 		s[i] = (l%(int)pow(10,10-i))/(int)pow(10,9-i) + 48;
+	s[11]=0;
+}
+
+void uinttostr(char* s,unsigned int l){
+	for(int i=0;i<10;i++)
+		s[i] = (l%(unsigned int)pow(10,10-i))/(unsigned int)pow(10,9-i) + 48;
 	s[11]=0;
 }
 

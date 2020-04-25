@@ -49,6 +49,7 @@
 #define DLCMT	117
 #define MVART	118
 #define ADLKE 	119
+#define GTMINE	120
 
 //C1状态字	
 #define PWFAIL	200
@@ -179,6 +180,8 @@ extern int getartcode(BLOCKCODE);
 extern int randartcode(BLOCKCODE);
 extern int checkartcode(struct Artini*,int,ARTCODE,BLOCKCODE);
 extern int readdic(struct Artini*, char,int,unsigned int);
+extern int getcount_byuser(BLOCKCODE,unsigned int);
+extern int readdic_byuser(struct Artini*,int,BLOCKCODE,unsigned int);
 extern int adddic(struct Artini);
 extern int updatedic(struct Artini,struct Artini);
 extern char getisliked(ARTCODE,BLOCKCODE,unsigned int);
